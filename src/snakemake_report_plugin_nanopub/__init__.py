@@ -9,6 +9,10 @@ from snakemake_interface_report_plugins.settings import ReportSettingsBase
 # Snakemake and the user as WorkflowError.
 from snakemake_interface_common.exceptions import WorkflowError  # noqa: F401
 
+from nanopub import Nanopub, NanopubConf, load_profile
+from rdflib import Graph
+import rdflib
+
 
 # Optional:
 # Define additional settings for your reporter.
@@ -54,8 +58,44 @@ class Reporter(ReporterBase):
         # for attributes of the base class.
         # In particular, the settings of above ReportSettings class are accessible via
         # self.settings.
-        ...
+        self.metadata = {field.name: field.metadata for field in ReportSettings.__dataclass_fields__.values()}
+        
 
     def render(self):
-        # Render the report, using attributes of the base class.
-        ...
+        """
+        The render method is called by Snakemake to generate the report,
+        which in this case, is a nanopub and not a graphical display.
+        """
+        np_conf = NanopubConf(
+            use_test_server=True, # will be configurable in the future
+            profile=load_profile(),
+            add_prov_generated_time=True,
+            attribute_publication_to_profile=True,
+        )
+
+        my_assertion = Graph()
+        
+        my_assertion.add((
+                rdflib.URIRef("http://example.org/"), # replace with actual subject
+                rdflib.RDF.type,
+                rdflib.FOAF.assertion,
+            ))
+        
+        np = Nanopub(
+            assertion=my_assertion,
+            nanopub_conf=np_conf,
+        )
+
+        # Add metadata to the nanopub
+        for name, metadata_object in self.metadata.items():
+            np.add_metadata(
+                name=name,
+                value=self.settings[name],
+                metadata_object=metadata_object,
+            )
+
+        # Publish the nanopub
+        np.publish()
+        # return a value from the render method
+        self.logger.info(f"Nanopub published successfully: {np.nanopub_uri}")
+        
