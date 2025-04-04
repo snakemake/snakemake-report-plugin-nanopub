@@ -26,4 +26,5 @@ ruff = "^0.11.3"
 coverage = "^7.8.0"
 pytest = "^8.3.5"
 snakemake = "^9.1.6"
-
+nanopub = "^2.0.1"
+rdflib = "^7.1.0"
