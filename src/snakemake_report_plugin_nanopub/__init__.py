@@ -17,6 +17,7 @@ from snakemake.report.html_reporter import data as html_data
 from snakemake_interface_common.exceptions import WorkflowError
 from snakemake_interface_report_plugins.reporter import ReporterBase
 from snakemake_interface_report_plugins.settings import ReportSettingsBase
+from .extraction import extract_jobs
 
 
 NANOPUB_SNK = Namespace("https://w3id.org/np/snakemake/")
@@ -110,31 +111,7 @@ class Reporter(ReporterBase):
             return value
         return str(value)
 
-    def _extract_jobs(self):
-        jobs = []
-        for rec in self.jobs:
-            start = getattr(rec, "starttime", None)
-            end = getattr(rec, "endtime", None)
-            runtime = None
-            if isinstance(start, (int, float)) and isinstance(end, (int, float)):
-                runtime = end - start
-
-            jobs.append(
-                {
-                    "rule": getattr(rec, "rule", None),
-                    "starttime": start,
-                    "endtime": end,
-                    "runtime": runtime,
-                    "output": self._jsonable(getattr(rec, "output", [])),
-                    "conda_env_file": self._jsonable(
-                        getattr(rec, "conda_env_file", None)
-                    ),
-                    "container_img_url": self._jsonable(
-                        getattr(rec, "container_img_url", None)
-                    ),
-                }
-            )
-        return jobs
+    
 
     def _extract_rules_full(self):
         workflow_rules = []
@@ -268,7 +245,7 @@ class Reporter(ReporterBase):
             },
             "html_reporter_derived": html_reporter_derived,
             "rules_full": self._extract_rules_full(),
-            "jobs_full": self._extract_jobs(),
+            "jobs_full": extract_jobs(self.jobs, self._jsonable),
             "inputs": self._extract_workflow_inputs(),
         }
 
