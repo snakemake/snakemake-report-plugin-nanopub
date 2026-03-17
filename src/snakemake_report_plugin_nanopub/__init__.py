@@ -13,8 +13,6 @@ from rdflib import Literal, Namespace, RDF, URIRef
 from rdflib.namespace import DCTERMS, RDFS
 from rdflib.namespace import XSD
 
-from snakemake.report.rulegraph_spec import rulegraph_spec
-from snakemake.report.html_reporter import data as html_data
 from snakemake_interface_common.exceptions import WorkflowError
 from snakemake_interface_report_plugins.reporter import ReporterBase
 from snakemake_interface_report_plugins.settings import ReportSettingsBase
@@ -25,6 +23,7 @@ from .extraction import (
     extract_workflow_inputs,
     extract_everything
 )
+from .extraction import extract_everything
 
 
 NANOPUB_SNK = Namespace("https://w3id.org/np/snakemake/")
@@ -54,12 +53,13 @@ def _configure_logger() -> logging.Logger:
         return logger
 
     handler = logging.StreamHandler()
-    handler.setFormatter(_SnakemakeStyleFormatter("[nanopub] %(levelname)s: %(message)s"))
+    handler.setFormatter(
+        _SnakemakeStyleFormatter("[nanopub] %(levelname)s: %(message)s")
+    )
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
     logger.propagate = False
     return logger
-
 
 
 @dataclass
@@ -68,7 +68,7 @@ class ReportSettings(ReportSettingsBase):
         default=None,
         metadata={
             "help": "NanoPub ID of a workflow for which this report"
-                    "this metadata NanoPub should be published.",
+            "this metadata NanoPub should be published.",
             "env_var": False,
             "required": True,
         },
@@ -93,7 +93,7 @@ class ReportSettings(ReportSettingsBase):
         default=False,
         metadata={
             "help": "Perform a dry run (do not publish the nanopub, just generate"
-                    "and print the nanopub content).",
+            "and print the nanopub content).",
             "env_var": False,
             "required": False,
         },
@@ -132,7 +132,9 @@ class Reporter(ReporterBase):
             if value.startswith(("http://", "https://", "urn:")):
                 return URIRef(value)
             return Literal(value)
-        return Literal(json.dumps(self._jsonable(value), ensure_ascii=False), datatype=XSD.string)
+        return Literal(
+            json.dumps(self._jsonable(value), ensure_ascii=False), datatype=XSD.string
+        )
 
     def safe_fragment(self, value: Any, prefix: str = "item") -> str:
         raw = str(value) if value is not None else ""
@@ -279,7 +281,10 @@ class Reporter(ReporterBase):
                     (
                         rule_node,
                         NANOPUB_SNK.parametersJSON,
-                        Literal(json.dumps(param_values, ensure_ascii=False), datatype=XSD.string),
+                        Literal(
+                            json.dumps(param_values, ensure_ascii=False),
+                            datatype=XSD.string,
+                        ),
                     )
                 )
 
@@ -287,8 +292,17 @@ class Reporter(ReporterBase):
 
     def render(self):
         try:
-            payload = extract_everything(self.jobs, self.rules, self.results, 
-                                         self.metadata, self.dag, self.workflow_description, self.generated_at, self._jsonable, self.logger)
+            payload = extract_everything(
+                self.jobs,
+                self.rules,
+                self.results,
+                self.metadata,
+                self.dag,
+                self.workflow_description,
+                self.generated_at,
+                self._jsonable,
+                self.logger,
+            )
 
             if self.settings.output_path is not None:
                 self.settings.output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -301,7 +315,9 @@ class Reporter(ReporterBase):
                 _ = np.is_valid
                 self.logger.info("Nanopub validation passed before publish.")
             except Exception as validation_error:
-                raise WorkflowError("Generated nanopub is invalid before publish.", validation_error)
+                raise WorkflowError(
+                    "Generated nanopub is invalid before publish.", validation_error
+                )
 
             # Registry endpoints can reject very large nanopubs with generic HTTP 400
             # and no structured response body. If the graph is large, retry with a
@@ -319,13 +335,18 @@ class Reporter(ReporterBase):
                 compact_html["packages"] = {}
                 compact_payload["html_reporter_derived"] = compact_html
                 np = self.build_nanopub(compact_payload)
-                self.logger.info("Compact nanopub quad count before publish: %d", len(np.rdf))
+                self.logger.info(
+                    "Compact nanopub quad count before publish: %d", len(np.rdf)
+                )
                 try:
                     _ = np.is_valid
-                    self.logger.info("Compact nanopub validation passed before publish.")
+                    self.logger.info(
+                        "Compact nanopub validation passed before publish."
+                    )
                 except Exception as validation_error:
                     raise WorkflowError(
-                        "Compact generated nanopub is invalid before publish.", validation_error
+                        "Compact generated nanopub is invalid before publish.",
+                        validation_error,
                     )
 
             # Main registry requires a signed trusty nanopub.
@@ -340,30 +361,36 @@ class Reporter(ReporterBase):
 
             self.logger.debug("Generated nanopub object: %s", np)
             if self.dry_run:
-                self.logger.info("Dry run: full nanopub content:\n%s", np.rdf.serialize(format="trig"))
+                self.logger.info(
+                    "Dry run: full nanopub content:\n%s",
+                    np.rdf.serialize(format="trig"),
+                )
                 sys.exit(0)
 
             try:
                 id = np.publish()
-                self.logger.info(
-                    f"Nanopub published successfully: {id}"
-                )
+                self.logger.info(f"Nanopub published successfully: {id}")
             except Exception as e:
                 self.logger.warning(
                     "Nanopub created (not published). Set --report-nanopub-init-publish to publish."
                     f"The error during publication was: {e}"
                 )
                 self.logger.warning("Publication exception type: %s", type(e).__name__)
-                self.logger.warning("Publication exception args: %s", getattr(e, "args", ()))
+                self.logger.warning(
+                    "Publication exception args: %s", getattr(e, "args", ())
+                )
                 # Show the server’s JSON error payload (if any)
                 if hasattr(e, "response") and e.response is not None:
-                    self.logger.warning("Server response status: %s", e.response.status_code)
+                    self.logger.warning(
+                        "Server response status: %s", e.response.status_code
+                    )
                     self.logger.warning("Server response body: %s", e.response.text)
                 if getattr(e, "__cause__", None) is not None:
                     self.logger.warning("Publication exception cause: %r", e.__cause__)
                 if getattr(e, "__context__", None) is not None:
-                    self.logger.warning("Publication exception context: %r", e.__context__)
+                    self.logger.warning(
+                        "Publication exception context: %r", e.__context__
+                    )
 
         except Exception as e:
             raise WorkflowError("Failed to generate nanopub metadata report.", e)
-           
