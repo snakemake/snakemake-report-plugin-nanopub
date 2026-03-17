@@ -9,7 +9,8 @@ import sys
 from urllib.parse import quote
 
 from nanopub import Nanopub, NanopubConf, load_profile
-from rdflib import Graph, Literal, Namespace, RDF, URIRef
+from rdflib import Literal, Namespace, RDF, URIRef
+from rdflib.namespace import DCTERMS, RDFS
 from rdflib.namespace import XSD
 
 from snakemake.report.rulegraph_spec import rulegraph_spec
@@ -17,6 +18,7 @@ from snakemake.report.html_reporter import data as html_data
 from snakemake_interface_common.exceptions import WorkflowError
 from snakemake_interface_report_plugins.reporter import ReporterBase
 from snakemake_interface_report_plugins.settings import ReportSettingsBase
+from .validation import bind_nanopub_prefixes
 from .extraction import (
     extract_jobs,
     extract_rules_full,
@@ -27,6 +29,7 @@ from .extraction import (
 
 NANOPUB_SNK = Namespace("https://w3id.org/np/snakemake/")
 SCHEMA = Namespace("https://schema.org/")
+NPX = Namespace("http://purl.org/nanopub/x/")
 
 
 class _SnakemakeStyleFormatter(logging.Formatter):
@@ -139,24 +142,51 @@ class Reporter(ReporterBase):
         return quote(raw, safe="")
 
     def build_nanopub(self, payload: dict):
+        profile = load_profile()
         np_conf = NanopubConf(
             use_test_server=not self.settings.main_server,
-            profile=load_profile(),
+            profile=profile,
+            add_pubinfo_generated_time=True,
             add_prov_generated_time=True,
             attribute_assertion_to_profile=True,
             attribute_publication_to_profile=True,
         )
 
-        assertion = Graph()
-        # Use HTTP URIs for nanopub compatibility
-        subj = URIRef(f"http://purl.org/nanopub/temp/np-{uuid.uuid4()}")
-        workflow_node = URIRef(f"http://purl.org/nanopub/temp/wr-{uuid.uuid4()}")
+        # Create the Nanopub first so we can use its sub-namespace for all
+        # internal URIs.  This mirrors workflow_report_template.py: nodes
+        # created under np._metadata.namespace live in the temp sub-namespace
+        # and are automatically rewritten to the trusty-URI sub-namespace when
+        # np.sign() is called.  Bare http://purl.org/nanopub/temp/ URIs that
+        # are NOT derived from that namespace are NOT rewritten by sign() and
+        # will therefore appear in the final nanopub as invalid temp URIs,
+        # causing the main registry to reject the publication.
+        np = Nanopub(conf=np_conf)
+        sub = np._metadata.namespace
+        np.pubinfo.add((np._metadata.np_uri, NPX.hasNanopubType, SCHEMA.Dataset))
+        np.pubinfo.add((np._metadata.np_uri, DCTERMS.created, Literal(self.generated_at, datatype=XSD.dateTime)))
 
-        #assertion.add((subj, RDF.type, NANOPUB_SNK.WorkflowMetadata))
-        assertion.add((subj, RDF.type, SCHEMA.Dataset))
-        assertion.add((workflow_node, RDF.type, NANOPUB_SNK.WorkflowRun))
-        assertion.add((subj, NANOPUB_SNK.hasWorkflowRun, workflow_node))
-        assertion.add(
+        profile_orcid = None
+        for attr in ("orcid_id", "orcid", "orcidid"):
+            value = getattr(profile, attr, None)
+            if value:
+                profile_orcid = value
+                break
+        if profile_orcid:
+            if not str(profile_orcid).startswith(("http://", "https://")):
+                profile_orcid = f"https://orcid.org/{profile_orcid}"
+            profile_orcid_ref = URIRef(str(profile_orcid))
+            np.pubinfo.add((np._metadata.np_uri, DCTERMS.creator, profile_orcid_ref))
+
+        workflow_id_value = self.settings.workflow_id or "workflow"
+        np.pubinfo.add((np._metadata.np_uri, RDFS.label, Literal(f"Snakemake workflow metadata: {workflow_id_value}")))
+
+        subj = sub["dataset"]
+        workflow_node = sub["workflowrun"]
+
+        np.assertion.add((subj, RDF.type, SCHEMA.Dataset))
+        np.assertion.add((workflow_node, RDF.type, NANOPUB_SNK.WorkflowRun))
+        np.assertion.add((subj, NANOPUB_SNK.hasWorkflowRun, workflow_node))
+        np.assertion.add(
             (
                 subj,
                 NANOPUB_SNK.generatedAt,
@@ -166,7 +196,7 @@ class Reporter(ReporterBase):
 
         workflow_id_term = self.make_term(self.settings.workflow_id)
         if workflow_id_term is not None:
-            assertion.add((subj, NANOPUB_SNK.describesWorkflow, workflow_id_term))
+            np.assertion.add((subj, NANOPUB_SNK.describesWorkflow, workflow_id_term))
 
         workflow = payload.get("workflow", {})
         for pred, key in (
@@ -175,35 +205,35 @@ class Reporter(ReporterBase):
         ):
             term = self.make_term(workflow.get(key))
             if term is not None:
-                assertion.add((workflow_node, pred, term))
+                np.assertion.add((workflow_node, pred, term))
 
         for item in workflow.get("included_snakefiles", []):
             term = self.make_term(item)
             if term is not None:
-                assertion.add((workflow_node, NANOPUB_SNK.includedSnakefile, term))
+                np.assertion.add((workflow_node, NANOPUB_SNK.includedSnakefile, term))
 
         for item in workflow.get("configfiles", []):
             term = self.make_term(item)
             if term is not None:
-                assertion.add((workflow_node, NANOPUB_SNK.configfile, term))
+                np.assertion.add((workflow_node, NANOPUB_SNK.configfile, term))
 
         for item in workflow.get("dag_sources", []):
             term = self.make_term(item)
             if term is not None:
-                assertion.add((workflow_node, NANOPUB_SNK.dagSource, term))
+                np.assertion.add((workflow_node, NANOPUB_SNK.dagSource, term))
 
         config_term = self.make_term(workflow.get("config"))
         if config_term is not None:
-            assertion.add((workflow_node, NANOPUB_SNK.configJSON, config_term))
+            np.assertion.add((workflow_node, NANOPUB_SNK.configJSON, config_term))
 
         metadata_term = self.make_term(workflow.get("metadata"))
         if metadata_term is not None:
-            assertion.add((workflow_node, NANOPUB_SNK.workflowMetadataJSON, metadata_term))
+            np.assertion.add((workflow_node, NANOPUB_SNK.workflowMetadataJSON, metadata_term))
 
         summary = payload.get("summary", {})
-        summary_node = URIRef(f"http://purl.org/nanopub/temp/ws-{uuid.uuid4()}")
-        assertion.add((summary_node, RDF.type, NANOPUB_SNK.WorkflowSummary))
-        assertion.add((subj, NANOPUB_SNK.hasSummary, summary_node))
+        summary_node = sub["workflowsummary"]
+        np.assertion.add((summary_node, RDF.type, NANOPUB_SNK.WorkflowSummary))
+        np.assertion.add((subj, NANOPUB_SNK.hasSummary, summary_node))
         for pred, key in (
             (NANOPUB_SNK.numberOfRules, "n_rules"),
             (NANOPUB_SNK.numberOfJobs, "n_jobs"),
@@ -211,7 +241,7 @@ class Reporter(ReporterBase):
         ):
             term = self.make_term(summary.get(key))
             if term is not None:
-                assertion.add((summary_node, pred, term))
+                np.assertion.add((summary_node, pred, term))
 
         rule_outputs = {}
         for job in payload.get("jobs_full", []):
@@ -225,13 +255,13 @@ class Reporter(ReporterBase):
 
         for rule in payload.get("rules_full", []):
             rule_name = rule.get("name", "rule")
-            rule_node = URIRef(f"http://purl.org/nanopub/temp/rule-{self.safe_fragment(rule_name, 'rule')}")
-            assertion.add((rule_node, RDF.type, NANOPUB_SNK.WorkflowRule))
-            assertion.add((workflow_node, NANOPUB_SNK.hasRule, rule_node))
+            rule_node = sub[f"rule-{self.safe_fragment(rule_name, 'rule')}"]
+            np.assertion.add((rule_node, RDF.type, NANOPUB_SNK.WorkflowRule))
+            np.assertion.add((workflow_node, NANOPUB_SNK.hasRule, rule_node))
 
             name_term = self.make_term(rule_name)
             if name_term is not None:
-                assertion.add((rule_node, NANOPUB_SNK.ruleName, name_term))
+                np.assertion.add((rule_node, NANOPUB_SNK.ruleName, name_term))
 
             software_labels = set()
             for key in ("wrapper", "script", "notebook", "conda_env", "container_img"):
@@ -244,27 +274,25 @@ class Reporter(ReporterBase):
                 software_labels.add(str(rule_name))
 
             for software in sorted(software_labels):
-                assertion.add((rule_node, NANOPUB_SNK.hasSoftwarePackage, Literal(software)))
+                np.assertion.add((rule_node, NANOPUB_SNK.hasSoftwarePackage, Literal(software)))
 
             aggregated_outputs = set(str(o) for o in rule.get("output", []) if o)
             aggregated_outputs.update(rule_outputs.get(rule_name, set()))
             for out in sorted(aggregated_outputs):
-                assertion.add((rule_node, NANOPUB_SNK.hasOutput, Literal(out)))
+                np.assertion.add((rule_node, NANOPUB_SNK.hasOutput, Literal(out)))
 
             for idx, param in enumerate(rule.get("params", []), start=1):
-                param_node = URIRef(
-                    f"http://purl.org/nanopub/temp/param-{self.safe_fragment(rule_name, 'rule')}-{idx}"
-                )
-                assertion.add((param_node, RDF.type, NANOPUB_SNK.Parameterization))
-                assertion.add((rule_node, NANOPUB_SNK.hasParameterization, param_node))
-                assertion.add((param_node, NANOPUB_SNK.parameterIndex, Literal(idx, datatype=XSD.integer)))
+                param_node = sub[f"param-{self.safe_fragment(rule_name, 'rule')}-{idx}"]
+                np.assertion.add((param_node, RDF.type, NANOPUB_SNK.Parameterization))
+                np.assertion.add((rule_node, NANOPUB_SNK.hasParameterization, param_node))
+                np.assertion.add((param_node, NANOPUB_SNK.parameterIndex, Literal(idx, datatype=XSD.integer)))
                 term = self.make_term(param)
                 if term is not None:
-                    assertion.add((param_node, NANOPUB_SNK.parameterValue, term))
+                    np.assertion.add((param_node, NANOPUB_SNK.parameterValue, term))
 
             param_values = [self._jsonable(p) for p in rule.get("params", [])]
             if param_values:
-                assertion.add(
+                np.assertion.add(
                     (
                         rule_node,
                         NANOPUB_SNK.parametersJSON,
@@ -272,9 +300,7 @@ class Reporter(ReporterBase):
                     )
                 )
 
-        # IMPORTANT: do not mutate head/provenance/pubinfo graphs after Nanopub
-        # construction because that can invalidate the trusty URI artifact code.
-        return Nanopub(assertion=assertion, conf=np_conf)
+        return np
 
     def render(self):
         try:
@@ -318,6 +344,16 @@ class Reporter(ReporterBase):
                     raise WorkflowError(
                         "Compact generated nanopub is invalid before publish.", validation_error
                     )
+
+            # Main registry requires a signed trusty nanopub.
+            np = bind_nanopub_prefixes(np)
+            try:
+                np.sign()
+                np = bind_nanopub_prefixes(np)
+                _ = np.is_valid
+                self.logger.info("Signed nanopub validation passed before publish.")
+            except Exception as sign_error:
+                raise WorkflowError("Failed to sign or validate nanopub before publish.", sign_error)
 
             self.logger.debug("Generated nanopub object: %s", np)
             if self.dry_run:
