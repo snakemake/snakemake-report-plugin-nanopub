@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [tool.pixi.pypi-dependencies]
-snakemake-reporter-plugin-nanopub = { path = ".", editable = true }
+snakemake-report-plugin-nanopub = { path = ".", editable = true }
 
 [project.urls]
 repository = "https://github.com/snakemake/snakemake-report-plugin-nanopub"
