@@ -1,9 +1,24 @@
 import datetime
 import json
+from pathlib import Path
 
 
 from snakemake.report.rulegraph_spec import rulegraph_spec as rulegraph_spec  # noqa: PLC0415
 from snakemake.report.html_reporter import data as html_data  # noqa: PLC0415
+
+
+def read_workflow_config_files(configfiles, logger):
+    config_entries = []
+    for configfile in configfiles:
+        path = Path(str(configfile))
+        entry = {"path": str(path)}
+        try:
+            entry["content"] = path.read_text(encoding="utf-8")
+        except OSError as e:
+            logger.warning("Could not read workflow config file %s: %s", path, e)
+            entry["content"] = None
+        config_entries.append(entry)
+    return config_entries
 
 
 def extract_jobs(jobs, jsonable):
@@ -149,24 +164,12 @@ def extract_everything(
     report_payload = {
         "generated_at": generated_at,
         "workflow": {
-            "main_snakefile": str(dag.workflow.main_snakefile),
-            "included_snakefiles": sorted(
-                [f.get_path_or_uri() for f in dag.workflow.included]
-            ),
             "configfiles": [str(f) for f in dag.workflow.configfiles],
-            "dag_sources": sorted(dag.get_sources()),
-            "description": workflow_description,
-            "metadata": jsonable(metadata),
-            "config": jsonable(dag.workflow.config),
-        },
-        "summary": {
-            "n_rules": len(list(dag.workflow.rules)),
-            "n_jobs": len(list(dag.jobs)),
-            "n_results": sum(
-                len(catresults)
-                for subcats in results.values()
-                for catresults in subcats.values()
+            "config_file_contents": read_workflow_config_files(
+                dag.workflow.configfiles, logger
             ),
+            "description": workflow_description,
+            "config": jsonable(dag.workflow.config),
         },
         "html_reporter_derived": html_reporter_derived,
         "rules_full": extract_rules_full(dag.workflow.rules, jsonable),

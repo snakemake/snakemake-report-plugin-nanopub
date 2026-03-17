@@ -180,68 +180,46 @@ class Reporter(ReporterBase):
         workflow_id_value = self.settings.workflow_id or "workflow"
         np.pubinfo.add((np._metadata.np_uri, RDFS.label, Literal(f"Snakemake workflow metadata: {workflow_id_value}")))
 
+        # Use a single dataset node — no separate workflowrun indirection.
         subj = sub["dataset"]
-        workflow_node = sub["workflowrun"]
+        workflow_node = subj
 
-        np.assertion.add((subj, RDF.type, SCHEMA.Dataset))
-        np.assertion.add((workflow_node, RDF.type, NANOPUB_SNK.WorkflowRun))
-        np.assertion.add((subj, NANOPUB_SNK.hasWorkflowRun, workflow_node))
-        np.assertion.add(
-            (
-                subj,
-                NANOPUB_SNK.generatedAt,
-                Literal(self.generated_at, datatype=XSD.dateTime),
-            )
-        )
-
+        # Put the most identifying triples first so they appear at the top of
+        # the serialized assertion block.
         workflow_id_term = self.make_term(self.settings.workflow_id)
         if workflow_id_term is not None:
             np.assertion.add((subj, NANOPUB_SNK.describesWorkflow, workflow_id_term))
 
+        np.assertion.add((subj, NANOPUB_SNK.generatedAt,
+                          Literal(self.generated_at, datatype=XSD.dateTime)))
+        np.assertion.add((subj, RDF.type, SCHEMA.Dataset))
+
         workflow = payload.get("workflow", {})
-        for pred, key in (
-            (NANOPUB_SNK.mainSnakefile, "main_snakefile"),
-            (NANOPUB_SNK.description, "description"),
-        ):
-            term = self.make_term(workflow.get(key))
-            if term is not None:
-                np.assertion.add((workflow_node, pred, term))
+        description_term = self.make_term(workflow.get("description"))
+        if description_term is not None:
+            np.assertion.add((subj, NANOPUB_SNK.description, description_term))
 
-        for item in workflow.get("included_snakefiles", []):
-            term = self.make_term(item)
-            if term is not None:
-                np.assertion.add((workflow_node, NANOPUB_SNK.includedSnakefile, term))
+        config_section_node = sub["workflow-configuration"]
+        np.assertion.add((workflow_node, NANOPUB_SNK.hasConfigurationSection, config_section_node))
+        np.assertion.add((config_section_node, RDFS.label, Literal("from workflow configuration")))
 
-        for item in workflow.get("configfiles", []):
-            term = self.make_term(item)
-            if term is not None:
-                np.assertion.add((workflow_node, NANOPUB_SNK.configfile, term))
+        config_file_contents = workflow.get("config_file_contents", [])
+        for idx, config_entry in enumerate(config_file_contents, start=1):
+            config_node = sub[f"config-{idx}"]
+            np.assertion.add((config_section_node, NANOPUB_SNK.hasConfigurationFile, config_node))
 
-        for item in workflow.get("dag_sources", []):
-            term = self.make_term(item)
-            if term is not None:
-                np.assertion.add((workflow_node, NANOPUB_SNK.dagSource, term))
+            path_term = self.make_term(config_entry.get("path"))
+            if path_term is not None:
+                np.assertion.add((config_node, DCTERMS.identifier, path_term))
 
-        config_term = self.make_term(workflow.get("config"))
-        if config_term is not None:
-            np.assertion.add((workflow_node, NANOPUB_SNK.configJSON, config_term))
+            content_term = self.make_term(config_entry.get("content"))
+            if content_term is not None:
+                np.assertion.add((config_node, SCHEMA.text, content_term))
 
-        metadata_term = self.make_term(workflow.get("metadata"))
-        if metadata_term is not None:
-            np.assertion.add((workflow_node, NANOPUB_SNK.workflowMetadataJSON, metadata_term))
-
-        summary = payload.get("summary", {})
-        summary_node = sub["workflowsummary"]
-        np.assertion.add((summary_node, RDF.type, NANOPUB_SNK.WorkflowSummary))
-        np.assertion.add((subj, NANOPUB_SNK.hasSummary, summary_node))
-        for pred, key in (
-            (NANOPUB_SNK.numberOfRules, "n_rules"),
-            (NANOPUB_SNK.numberOfJobs, "n_jobs"),
-            (NANOPUB_SNK.numberOfResults, "n_results"),
-        ):
-            term = self.make_term(summary.get(key))
-            if term is not None:
-                np.assertion.add((summary_node, pred, term))
+        if not config_file_contents:
+            config_term = self.make_term(workflow.get("config"))
+            if config_term is not None:
+                np.assertion.add((config_section_node, SCHEMA.text, config_term))
 
         rule_outputs = {}
         for job in payload.get("jobs_full", []):
@@ -276,10 +254,15 @@ class Reporter(ReporterBase):
             for software in sorted(software_labels):
                 np.assertion.add((rule_node, NANOPUB_SNK.hasSoftwarePackage, Literal(software)))
 
-            aggregated_outputs = set(str(o) for o in rule.get("output", []) if o)
-            aggregated_outputs.update(rule_outputs.get(rule_name, set()))
-            for out in sorted(aggregated_outputs):
-                np.assertion.add((rule_node, NANOPUB_SNK.hasOutput, Literal(out)))
+            if rule_name == "all":
+                aggregated_inputs = set(str(i) for i in rule.get("input", []) if i)
+                for rule_input in sorted(aggregated_inputs):
+                    np.assertion.add((rule_node, NANOPUB_SNK.hasInput, Literal(rule_input)))
+            else:
+                aggregated_outputs = set(str(o) for o in rule.get("output", []) if o)
+                aggregated_outputs.update(rule_outputs.get(rule_name, set()))
+                for out in sorted(aggregated_outputs):
+                    np.assertion.add((rule_node, NANOPUB_SNK.hasOutput, Literal(out)))
 
             for idx, param in enumerate(rule.get("params", []), start=1):
                 param_node = sub[f"param-{self.safe_fragment(rule_name, 'rule')}-{idx}"]
