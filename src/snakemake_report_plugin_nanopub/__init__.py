@@ -12,15 +12,10 @@ from nanopub import Nanopub, NanopubConf, load_profile
 from rdflib import Graph, Literal, Namespace, RDF, URIRef
 from rdflib.namespace import XSD
 
-from snakemake.report.rulegraph_spec import rulegraph_spec
-from snakemake.report.html_reporter import data as html_data
 from snakemake_interface_common.exceptions import WorkflowError
 from snakemake_interface_report_plugins.reporter import ReporterBase
 from snakemake_interface_report_plugins.settings import ReportSettingsBase
 from .extraction import (
-    extract_jobs,
-    extract_rules_full,
-    extract_workflow_inputs,
     extract_everything
 )
 
