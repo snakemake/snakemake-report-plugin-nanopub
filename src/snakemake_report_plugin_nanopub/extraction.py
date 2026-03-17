@@ -119,8 +119,6 @@ def extract_everything(
         for rec in jobs
     ]
 
-    
-
     html_reporter_derived = {}
     try:
         rulegraph, _, _ = rulegraph_spec(dag)
