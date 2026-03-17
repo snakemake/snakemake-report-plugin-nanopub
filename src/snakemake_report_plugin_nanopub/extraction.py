@@ -1,4 +1,9 @@
 import datetime
+import json
+
+
+from snakemake.report.rulegraph_spec import rulegraph_spec as rulegraph_spec  # noqa: PLC0415
+from snakemake.report.html_reporter import data as html_data  # noqa: PLC0415
 
 
 def extract_jobs(jobs, jsonable):
@@ -114,11 +119,13 @@ def extract_everything(
         for rec in jobs
     ]
 
+    
+
     html_reporter_derived = {}
     try:
         rulegraph, _, _ = rulegraph_spec(dag)
         html_reporter_derived = {
-            "categories": json.loads(html_data.render_categories(esults)),
+            "categories": json.loads(html_data.render_categories(results)),
             "results": json.loads(
                 html_data.render_results(results, mode_embedded=True)
             ),

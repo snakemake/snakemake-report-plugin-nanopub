@@ -21,7 +21,7 @@ from .extraction import (
     extract_jobs,
     extract_rules_full,
     extract_workflow_inputs,
-    extract_everything,
+    extract_everything
 )
 
 
@@ -51,13 +51,12 @@ def _configure_logger() -> logging.Logger:
         return logger
 
     handler = logging.StreamHandler()
-    handler.setFormatter(
-        _SnakemakeStyleFormatter("[nanopub] %(levelname)s: %(message)s")
-    )
+    handler.setFormatter(_SnakemakeStyleFormatter("[nanopub] %(levelname)s: %(message)s"))
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
     logger.propagate = False
     return logger
+
 
 
 @dataclass
@@ -66,7 +65,7 @@ class ReportSettings(ReportSettingsBase):
         default=None,
         metadata={
             "help": "NanoPub ID of a workflow for which this report"
-            "this metadata NanoPub should be published.",
+                    "this metadata NanoPub should be published.",
             "env_var": False,
             "required": True,
         },
@@ -91,7 +90,7 @@ class ReportSettings(ReportSettingsBase):
         default=False,
         metadata={
             "help": "Perform a dry run (do not publish the nanopub, just generate"
-            "and print the nanopub content).",
+                    "and print the nanopub content).",
             "env_var": False,
             "required": False,
         },
@@ -117,89 +116,7 @@ class Reporter(ReporterBase):
             return value
         return str(value)
 
-    def _extract_everything(self):
-        runtimes_raw = [
-            {"rule": rec.rule, "runtime": rec.endtime - rec.starttime}
-            for rec in self.jobs
-            if getattr(rec, "endtime", None) is not None
-            and getattr(rec, "starttime", None) is not None
-        ]
-
-        def ts_iso(ts):
-            if ts is None:
-                return None
-            try:
-                return datetime.datetime.fromtimestamp(ts).isoformat()
-            except OSError:
-                return None
-
-        timeline_raw = [
-            {
-                "rule": rec.rule,
-                "starttime": ts_iso(getattr(rec, "starttime", None)),
-                "endtime": ts_iso(getattr(rec, "endtime", None)),
-            }
-            for rec in self.jobs
-        ]
-
-        html_reporter_derived = {}
-        try:
-            rulegraph, _, _ = rulegraph_spec(self.dag)
-            html_reporter_derived = {
-                "categories": json.loads(html_data.render_categories(self.results)),
-                "results": json.loads(
-                    html_data.render_results(self.results, mode_embedded=True)
-                ),
-                "rulegraph": {
-                    "nodes": rulegraph["nodes"],
-                    "links": rulegraph["links"],
-                    "links_direct": rulegraph["links_direct"],
-                },
-                "rules": json.loads(html_data.render_rules(self.rules)),
-                "runtimes": runtimes_raw,
-                "timeline": timeline_raw,
-                "packages": json.loads(html_data.get_packages().get_json()),
-                "metadata": json.loads(html_data.render_metadata(self.metadata)),
-            }
-        except Exception as e:
-            self.logger.warning(
-                "Skipping optional html_reporter_derived extraction due to error: %s", e
-            )
-            self.logger.debug(
-                "html_reporter_derived extraction traceback", exc_info=True
-            )
-
-        report_payload = {
-            "generated_at": self.generated_at,
-            "workflow": {
-                "main_snakefile": str(self.dag.workflow.main_snakefile),
-                "included_snakefiles": sorted(
-                    [f.get_path_or_uri() for f in self.dag.workflow.included]
-                ),
-                "configfiles": [str(f) for f in self.dag.workflow.configfiles],
-                "dag_sources": sorted(self.dag.get_sources()),
-                "description": self.workflow_description,
-                "metadata": self._jsonable(self.metadata),
-                "config": self._jsonable(self.dag.workflow.config),
-            },
-            "summary": {
-                "n_rules": len(list(self.dag.workflow.rules)),
-                "n_jobs": len(list(self.dag.jobs)),
-                "n_results": sum(
-                    len(catresults)
-                    for subcats in self.results.values()
-                    for catresults in subcats.values()
-                ),
-            },
-            "html_reporter_derived": html_reporter_derived,
-            "rules_full": extract_rules_full(self.dag.workflow.rules, self._jsonable),
-            "jobs_full": extract_jobs(self.jobs, self._jsonable),
-            "inputs": extract_workflow_inputs(self.dag),
-        }
-
-        return report_payload
-
-    def _make_term(self, value: Any):
+    def make_term(self, value: Any):
         if value is None:
             return None
         if isinstance(value, bool):
@@ -212,18 +129,16 @@ class Reporter(ReporterBase):
             if value.startswith(("http://", "https://", "urn:")):
                 return URIRef(value)
             return Literal(value)
-        return Literal(
-            json.dumps(self._jsonable(value), ensure_ascii=False), datatype=XSD.string
-        )
+        return Literal(json.dumps(self._jsonable(value), ensure_ascii=False), datatype=XSD.string)
 
-    def _safe_fragment(self, value: Any, prefix: str = "item") -> str:
+    def safe_fragment(self, value: Any, prefix: str = "item") -> str:
         raw = str(value) if value is not None else ""
         raw = raw.strip()
         if not raw:
             return f"{prefix}-{uuid.uuid4()}"
         return quote(raw, safe="")
 
-    def _build_nanopub(self, payload: dict):
+    def build_nanopub(self, payload: dict):
         np_conf = NanopubConf(
             use_test_server=not self.settings.main_server,
             profile=load_profile(),
@@ -237,7 +152,7 @@ class Reporter(ReporterBase):
         subj = URIRef(f"http://purl.org/nanopub/temp/np-{uuid.uuid4()}")
         workflow_node = URIRef(f"http://purl.org/nanopub/temp/wr-{uuid.uuid4()}")
 
-        # assertion.add((subj, RDF.type, NANOPUB_SNK.WorkflowMetadata))
+        #assertion.add((subj, RDF.type, NANOPUB_SNK.WorkflowMetadata))
         assertion.add((subj, RDF.type, SCHEMA.Dataset))
         assertion.add((workflow_node, RDF.type, NANOPUB_SNK.WorkflowRun))
         assertion.add((subj, NANOPUB_SNK.hasWorkflowRun, workflow_node))
@@ -249,7 +164,7 @@ class Reporter(ReporterBase):
             )
         )
 
-        workflow_id_term = self._make_term(self.settings.workflow_id)
+        workflow_id_term = self.make_term(self.settings.workflow_id)
         if workflow_id_term is not None:
             assertion.add((subj, NANOPUB_SNK.describesWorkflow, workflow_id_term))
 
@@ -258,34 +173,32 @@ class Reporter(ReporterBase):
             (NANOPUB_SNK.mainSnakefile, "main_snakefile"),
             (NANOPUB_SNK.description, "description"),
         ):
-            term = self._make_term(workflow.get(key))
+            term = self.make_term(workflow.get(key))
             if term is not None:
                 assertion.add((workflow_node, pred, term))
 
         for item in workflow.get("included_snakefiles", []):
-            term = self._make_term(item)
+            term = self.make_term(item)
             if term is not None:
                 assertion.add((workflow_node, NANOPUB_SNK.includedSnakefile, term))
 
         for item in workflow.get("configfiles", []):
-            term = self._make_term(item)
+            term = self.make_term(item)
             if term is not None:
                 assertion.add((workflow_node, NANOPUB_SNK.configfile, term))
 
         for item in workflow.get("dag_sources", []):
-            term = self._make_term(item)
+            term = self.make_term(item)
             if term is not None:
                 assertion.add((workflow_node, NANOPUB_SNK.dagSource, term))
 
-        config_term = self._make_term(workflow.get("config"))
+        config_term = self.make_term(workflow.get("config"))
         if config_term is not None:
             assertion.add((workflow_node, NANOPUB_SNK.configJSON, config_term))
 
-        metadata_term = self._make_term(workflow.get("metadata"))
+        metadata_term = self.make_term(workflow.get("metadata"))
         if metadata_term is not None:
-            assertion.add(
-                (workflow_node, NANOPUB_SNK.workflowMetadataJSON, metadata_term)
-            )
+            assertion.add((workflow_node, NANOPUB_SNK.workflowMetadataJSON, metadata_term))
 
         summary = payload.get("summary", {})
         summary_node = URIRef(f"http://purl.org/nanopub/temp/ws-{uuid.uuid4()}")
@@ -296,7 +209,7 @@ class Reporter(ReporterBase):
             (NANOPUB_SNK.numberOfJobs, "n_jobs"),
             (NANOPUB_SNK.numberOfResults, "n_results"),
         ):
-            term = self._make_term(summary.get(key))
+            term = self.make_term(summary.get(key))
             if term is not None:
                 assertion.add((summary_node, pred, term))
 
@@ -312,13 +225,11 @@ class Reporter(ReporterBase):
 
         for rule in payload.get("rules_full", []):
             rule_name = rule.get("name", "rule")
-            rule_node = URIRef(
-                f"http://purl.org/nanopub/temp/rule-{self._safe_fragment(rule_name, 'rule')}"
-            )
+            rule_node = URIRef(f"http://purl.org/nanopub/temp/rule-{self.safe_fragment(rule_name, 'rule')}")
             assertion.add((rule_node, RDF.type, NANOPUB_SNK.WorkflowRule))
             assertion.add((workflow_node, NANOPUB_SNK.hasRule, rule_node))
 
-            name_term = self._make_term(rule_name)
+            name_term = self.make_term(rule_name)
             if name_term is not None:
                 assertion.add((rule_node, NANOPUB_SNK.ruleName, name_term))
 
@@ -333,9 +244,7 @@ class Reporter(ReporterBase):
                 software_labels.add(str(rule_name))
 
             for software in sorted(software_labels):
-                assertion.add(
-                    (rule_node, NANOPUB_SNK.hasSoftwarePackage, Literal(software))
-                )
+                assertion.add((rule_node, NANOPUB_SNK.hasSoftwarePackage, Literal(software)))
 
             aggregated_outputs = set(str(o) for o in rule.get("output", []) if o)
             aggregated_outputs.update(rule_outputs.get(rule_name, set()))
@@ -344,18 +253,12 @@ class Reporter(ReporterBase):
 
             for idx, param in enumerate(rule.get("params", []), start=1):
                 param_node = URIRef(
-                    f"http://purl.org/nanopub/temp/param-{self._safe_fragment(rule_name, 'rule')}-{idx}"
+                    f"http://purl.org/nanopub/temp/param-{self.safe_fragment(rule_name, 'rule')}-{idx}"
                 )
                 assertion.add((param_node, RDF.type, NANOPUB_SNK.Parameterization))
                 assertion.add((rule_node, NANOPUB_SNK.hasParameterization, param_node))
-                assertion.add(
-                    (
-                        param_node,
-                        NANOPUB_SNK.parameterIndex,
-                        Literal(idx, datatype=XSD.integer),
-                    )
-                )
-                term = self._make_term(param)
+                assertion.add((param_node, NANOPUB_SNK.parameterIndex, Literal(idx, datatype=XSD.integer)))
+                term = self.make_term(param)
                 if term is not None:
                     assertion.add((param_node, NANOPUB_SNK.parameterValue, term))
 
@@ -365,10 +268,7 @@ class Reporter(ReporterBase):
                     (
                         rule_node,
                         NANOPUB_SNK.parametersJSON,
-                        Literal(
-                            json.dumps(param_values, ensure_ascii=False),
-                            datatype=XSD.string,
-                        ),
+                        Literal(json.dumps(param_values, ensure_ascii=False), datatype=XSD.string),
                     )
                 )
 
@@ -378,32 +278,21 @@ class Reporter(ReporterBase):
 
     def render(self):
         try:
-            payload = extract_everything(
-                self.jobs,
-                self.rules,
-                self.results,
-                self.metadata,
-                self.dag,
-                self.workflow_description,
-                self.generated_at,
-                self._jsonable,
-                self.logger,
-            )
+            payload = extract_everything(self.jobs, self.rules, self.results, 
+                                         self.metadata, self.dag, self.workflow_description, self.generated_at, self._jsonable, self.logger)
 
             if self.settings.output_path is not None:
                 self.settings.output_path.parent.mkdir(parents=True, exist_ok=True)
                 with open(self.settings.output_path, "w", encoding="utf-8") as out:
                     json.dump(payload, out, indent=2, ensure_ascii=False)
 
-            np = self._build_nanopub(payload)
+            np = self.build_nanopub(payload)
             self.logger.info("Nanopub quad count before publish: %d", len(np.rdf))
             try:
                 _ = np.is_valid
                 self.logger.info("Nanopub validation passed before publish.")
             except Exception as validation_error:
-                raise WorkflowError(
-                    "Generated nanopub is invalid before publish.", validation_error
-                )
+                raise WorkflowError("Generated nanopub is invalid before publish.", validation_error)
 
             # Registry endpoints can reject very large nanopubs with generic HTTP 400
             # and no structured response body. If the graph is large, retry with a
@@ -420,53 +309,42 @@ class Reporter(ReporterBase):
                 compact_html = dict(compact_payload.get("html_reporter_derived", {}))
                 compact_html["packages"] = {}
                 compact_payload["html_reporter_derived"] = compact_html
-                np = self._build_nanopub(compact_payload)
-                self.logger.info(
-                    "Compact nanopub quad count before publish: %d", len(np.rdf)
-                )
+                np = self.build_nanopub(compact_payload)
+                self.logger.info("Compact nanopub quad count before publish: %d", len(np.rdf))
                 try:
                     _ = np.is_valid
-                    self.logger.info(
-                        "Compact nanopub validation passed before publish."
-                    )
+                    self.logger.info("Compact nanopub validation passed before publish.")
                 except Exception as validation_error:
                     raise WorkflowError(
-                        "Compact generated nanopub is invalid before publish.",
-                        validation_error,
+                        "Compact generated nanopub is invalid before publish.", validation_error
                     )
 
             self.logger.debug("Generated nanopub object: %s", np)
             if self.dry_run:
-                self.logger.info(
-                    "Dry run: full nanopub content:\n%s",
-                    np.rdf.serialize(format="trig"),
-                )
+                self.logger.info("Dry run: full nanopub content:\n%s", np.rdf.serialize(format="trig"))
                 sys.exit(0)
 
             try:
                 id = np.publish()
-                self.logger.info(f"Nanopub published successfully: {id}")
+                self.logger.info(
+                    f"Nanopub published successfully: {id}"
+                )
             except Exception as e:
                 self.logger.warning(
                     "Nanopub created (not published). Set --report-nanopub-init-publish to publish."
                     f"The error during publication was: {e}"
                 )
                 self.logger.warning("Publication exception type: %s", type(e).__name__)
-                self.logger.warning(
-                    "Publication exception args: %s", getattr(e, "args", ())
-                )
+                self.logger.warning("Publication exception args: %s", getattr(e, "args", ()))
                 # Show the server’s JSON error payload (if any)
                 if hasattr(e, "response") and e.response is not None:
-                    self.logger.warning(
-                        "Server response status: %s", e.response.status_code
-                    )
+                    self.logger.warning("Server response status: %s", e.response.status_code)
                     self.logger.warning("Server response body: %s", e.response.text)
                 if getattr(e, "__cause__", None) is not None:
                     self.logger.warning("Publication exception cause: %r", e.__cause__)
                 if getattr(e, "__context__", None) is not None:
-                    self.logger.warning(
-                        "Publication exception context: %r", e.__context__
-                    )
+                    self.logger.warning("Publication exception context: %r", e.__context__)
 
         except Exception as e:
             raise WorkflowError("Failed to generate nanopub metadata report.", e)
+           
