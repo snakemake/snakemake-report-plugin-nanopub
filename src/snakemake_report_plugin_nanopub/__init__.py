@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 import datetime
 import json
-import logging
 from pathlib import Path
 from typing import Any, Optional
 import uuid
@@ -15,51 +14,14 @@ from rdflib.namespace import XSD
 
 from snakemake_interface_common.exceptions import WorkflowError
 from snakemake_interface_report_plugins.reporter import ReporterBase
-from snakemake_interface_report_plugins.settings import ReportSettingsBase
+from snakemake_interface_report_plugins.settings import ExecMode, ReportSettingsBase
 from .validation import bind_nanopub_prefixes
-from .extraction import (
-    extract_jobs,
-    extract_rules_full,
-    extract_workflow_inputs,
-    extract_everything
-)
 from .extraction import extract_everything
 
 
 NANOPUB_SNK = Namespace("https://w3id.org/np/snakemake/")
 SCHEMA = Namespace("https://schema.org/")
 NPX = Namespace("http://purl.org/nanopub/x/")
-
-
-class _SnakemakeStyleFormatter(logging.Formatter):
-    _RESET = "\033[0m"
-    _COLORS = {
-        logging.INFO: "\033[32m",
-        logging.WARNING: "\033[33m",
-        logging.DEBUG: "\033[34m",
-    }
-
-    def format(self, record: logging.LogRecord) -> str:
-        message = super().format(record)
-        color = self._COLORS.get(record.levelno)
-        if color is None:
-            return message
-        return f"{color}{message}{self._RESET}"
-
-
-def _configure_logger() -> logging.Logger:
-    logger = logging.getLogger("snakemake.report.nanopub")
-    if logger.handlers:
-        return logger
-
-    handler = logging.StreamHandler()
-    handler.setFormatter(
-        _SnakemakeStyleFormatter("[nanopub] %(levelname)s: %(message)s")
-    )
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
-    logger.propagate = False
-    return logger
 
 
 @dataclass
@@ -105,8 +67,10 @@ class Reporter(ReporterBase):
 
     def __post_init__(self):
         self.generated_at = datetime.datetime.now(datetime.UTC).isoformat()
-        self.logger = _configure_logger()
         self.dry_run = self.settings.dry_run
+
+    def get_exec_mode(self) -> ExecMode:
+        return ExecMode.DEFAULT
 
     def _jsonable(self, value: Any):
         if isinstance(value, dict):
@@ -310,7 +274,7 @@ class Reporter(ReporterBase):
                     json.dump(payload, out, indent=2, ensure_ascii=False)
 
             np = self.build_nanopub(payload)
-            self.logger.info("Nanopub quad count before publish: %d", len(np.rdf))
+            self.logger.info(f"Nanopub quad count before publish: {len(np.rdf)}")
             try:
                 _ = np.is_valid
                 self.logger.info("Nanopub validation passed before publish.")
@@ -324,9 +288,7 @@ class Reporter(ReporterBase):
             # compact assertion model that keeps only summary-level information.
             if len(np.rdf) > self._MAX_PUBLISH_QUADS:
                 self.logger.warning(
-                    "Nanopub has %d quads (threshold %d). Building compact nanopub for publish retry.",
-                    len(np.rdf),
-                    self._MAX_PUBLISH_QUADS,
+                    f"Nanopub has {len(np.rdf)} quads (threshold {self._MAX_PUBLISH_QUADS}). Building compact nanopub for publish retry."
                 )
                 compact_payload = dict(payload)
                 compact_payload["rules_full"] = []
@@ -336,7 +298,7 @@ class Reporter(ReporterBase):
                 compact_payload["html_reporter_derived"] = compact_html
                 np = self.build_nanopub(compact_payload)
                 self.logger.info(
-                    "Compact nanopub quad count before publish: %d", len(np.rdf)
+                    f"Compact nanopub quad count before publish: {len(np.rdf)}"
                 )
                 try:
                     _ = np.is_valid
@@ -359,11 +321,10 @@ class Reporter(ReporterBase):
             except Exception as sign_error:
                 raise WorkflowError("Failed to sign or validate nanopub before publish.", sign_error)
 
-            self.logger.debug("Generated nanopub object: %s", np)
+            self.logger.debug(f"Generated nanopub object: {np}")
             if self.dry_run:
                 self.logger.info(
-                    "Dry run: full nanopub content:\n%s",
-                    np.rdf.serialize(format="trig"),
+                    f"Dry run: full nanopub content:\n{np.rdf.serialize(format='trig')}"
                 )
                 sys.exit(0)
 
@@ -375,21 +336,21 @@ class Reporter(ReporterBase):
                     "Nanopub created (not published). Set --report-nanopub-init-publish to publish."
                     f"The error during publication was: {e}"
                 )
-                self.logger.warning("Publication exception type: %s", type(e).__name__)
+                self.logger.warning(f"Publication exception type: {type(e).__name__}")
                 self.logger.warning(
-                    "Publication exception args: %s", getattr(e, "args", ())
+                    f"Publication exception args: {getattr(e, 'args', ())}"
                 )
                 # Show the server’s JSON error payload (if any)
                 if hasattr(e, "response") and e.response is not None:
                     self.logger.warning(
-                        "Server response status: %s", e.response.status_code
+                        f"Server response status: {e.response.status_code}"
                     )
-                    self.logger.warning("Server response body: %s", e.response.text)
+                    self.logger.warning(f"Server response body: {e.response.text}")
                 if getattr(e, "__cause__", None) is not None:
-                    self.logger.warning("Publication exception cause: %r", e.__cause__)
+                    self.logger.warning(f"Publication exception cause: {e.__cause__!r}")
                 if getattr(e, "__context__", None) is not None:
                     self.logger.warning(
-                        "Publication exception context: %r", e.__context__
+                        f"Publication exception context: {e.__context__!r}"
                     )
 
         except Exception as e:

@@ -15,7 +15,7 @@ def read_workflow_config_files(configfiles, logger):
         try:
             entry["content"] = path.read_text(encoding="utf-8")
         except OSError as e:
-            logger.warning("Could not read workflow config file %s: %s", path, e)
+            logger.warning(f"Could not read workflow config file {path}: {e}")
             entry["content"] = None
         config_entries.append(entry)
     return config_entries
@@ -155,9 +155,9 @@ def extract_everything(
         }
     except Exception as e:
         logger.warning(
-            "Skipping optional html_reporter_derived extraction due to error: %s", e
+            f"Skipping optional html_reporter_derived extraction due to error: {e}"
         )
-        logger.debug("html_reporter_derived extraction traceback", exc_info=True)
+        logger.debug(f"html_reporter_derived extraction traceback: {e!r}")
 
     report_payload = {
         "generated_at": generated_at,
