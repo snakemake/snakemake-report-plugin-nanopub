@@ -7,3 +7,26 @@
 
 - users will be enabled to automatically create a [nanopub](https://nanopub.net/) using a workflow's metadata
 - this nanopub can subsequently be referenced in publications and thereby covering __all__ metadata necessary to scrutinize an analysis (all too often crucial data are missing from publications)
+
+## CLI: plot nanopub knowledge graph
+
+After installation, run:
+
+```bash
+plot-nanopub-knowledge-graph \
+	--dataset-nanopub-id <dataset_nanopub_url> \
+	--workflow-nanopub-id <workflow_nanopub_url> \
+	--report-nanopub-id <report_nanopub_url> \
+	-o graph.png
+```
+
+This generates a Graphviz plot with three rounded boxes (`Dataset`, `Workflow`, `Workflow Report`) and arrows labeled `used by`, `produces`, and `based upon`.
+
+Optional settings:
+
+- `--line-color "dark brick red"` (default) for node border and arrow color
+- `--format svg|png|pdf` to override output format
+- `--verbose` to print debug logs for nanopub description extraction
+- `--text-width 60` to control line wrapping width in box text
+
+Default output format is `png`.
