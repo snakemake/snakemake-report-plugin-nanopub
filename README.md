@@ -16,11 +16,12 @@ After installation, run:
 plot-nanopub-knowledge-graph \
 	--dataset-nanopub-id <dataset_nanopub_url> \
 	--workflow-nanopub-id <workflow_nanopub_url> \
+	--workflow-configuration-id <workflow_configuration_nanopub_url> \
 	--report-nanopub-id <report_nanopub_url> \
 	-o graph.png
 ```
 
-This generates a Graphviz plot with three rounded boxes (`Dataset`, `Workflow`, `Workflow Report`) and arrows labeled `used by`, `produces`, and `based upon`.
+This generates a Graphviz plot with four rounded boxes (`Dataset`, `Workflow`, `Workflow Configuration`, `Workflow Report`) and arrows labeled `used by`, `used this configuration`, `produces`, and `based upon`.
 
 Optional settings:
 
