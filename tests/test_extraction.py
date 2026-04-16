@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -69,9 +70,7 @@ def test_read_workflow_config_files_reads_and_reports_missing(tmp_path):
     assert entries[0]["content"] == "answer: 42\n"
     assert entries[1]["path"] == str(missing)
     assert entries[1]["content"] is None
-    assert any(
-        "Could not read workflow config file" in warning for warning in logger.warnings
-    )
+    assert any("Could not read workflow config file" in warning for warning in logger.warnings)
 
 
 def test_extract_jobs_computes_runtime_and_serializes(jsonable):
@@ -140,20 +139,14 @@ def test_extract_everything_builds_full_payload(monkeypatch, tmp_path, jsonable)
     monkeypatch.setattr(
         extraction,
         "rulegraph_spec",
-        lambda dag_arg: (
-            {"nodes": ["n1"], "links": ["l1"], "links_direct": []},
-            None,
-            None,
-        ),
+        lambda dag_arg: ({"nodes": ["n1"], "links": ["l1"], "links_direct": []}, None, None),
     )
 
     fake_html = SimpleNamespace(
         render_categories=lambda results: json.dumps([{"name": "cat"}]),
         render_results=lambda results, mode_embedded=True: json.dumps([{"id": "res"}]),
         render_rules=lambda rules_arg: json.dumps([{"name": "align"}]),
-        get_packages=lambda: SimpleNamespace(
-            get_json=lambda: json.dumps({"pkg": "1.0"})
-        ),
+        get_packages=lambda: SimpleNamespace(get_json=lambda: json.dumps({"pkg": "1.0"})),
         render_metadata=lambda metadata: json.dumps({"meta": "ok"}),
     )
     monkeypatch.setattr(extraction, "html_data", fake_html)
@@ -181,9 +174,7 @@ def test_extract_everything_builds_full_payload(monkeypatch, tmp_path, jsonable)
     assert payload["html_reporter_derived"]["packages"] == {"pkg": "1.0"}
 
 
-def test_extract_everything_handles_optional_html_derived_failure(
-    monkeypatch, tmp_path, jsonable
-):
+def test_extract_everything_handles_optional_html_derived_failure(monkeypatch, tmp_path, jsonable):
     logger = DummyLogger()
     cfg = tmp_path / "workflow.yaml"
     cfg.write_text("threads: 2\n", encoding="utf-8")
@@ -196,11 +187,7 @@ def test_extract_everything_handles_optional_html_derived_failure(
         workflow=SimpleNamespace(configfiles=[cfg], config={"threads": 2}, rules=rules),
     )
 
-    monkeypatch.setattr(
-        extraction,
-        "rulegraph_spec",
-        lambda dag_arg: (_ for _ in ()).throw(RuntimeError("boom")),
-    )
+    monkeypatch.setattr(extraction, "rulegraph_spec", lambda dag_arg: (_ for _ in ()).throw(RuntimeError("boom")))
 
     payload = extraction.extract_everything(
         jobs=jobs,
@@ -215,8 +202,5 @@ def test_extract_everything_handles_optional_html_derived_failure(
     )
 
     assert payload["html_reporter_derived"] == {}
-    assert any(
-        "Skipping optional html_reporter_derived extraction" in warning
-        for warning in logger.warnings
-    )
+    assert any("Skipping optional html_reporter_derived extraction" in warning for warning in logger.warnings)
     assert any("traceback" in debug for debug in logger.debugs)
