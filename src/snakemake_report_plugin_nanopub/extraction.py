@@ -3,7 +3,9 @@ import json
 from pathlib import Path
 
 
-from snakemake.report.rulegraph_spec import rulegraph_spec as rulegraph_spec  # noqa: PLC0415
+from snakemake.report.rulegraph_spec import (
+    rulegraph_spec as rulegraph_spec,
+)  # noqa: PLC0415
 from snakemake.report.html_reporter import data as html_data  # noqa: PLC0415
 
 
