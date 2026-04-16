@@ -1,11 +1,13 @@
 from dataclasses import dataclass, field
 import datetime
+import html
 import json
 from pathlib import Path
+import re
 from typing import Any, Optional
 import uuid
 import sys
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from nanopub import Nanopub, NanopubConf, load_profile
 from rdflib import Literal, Namespace, RDF, URIRef
@@ -111,6 +113,44 @@ class Reporter(ReporterBase):
             return f"{prefix}-{uuid.uuid4()}"
         return quote(raw, safe="")
 
+    def plain_text(self, value: Any, drop_links: bool = False) -> Optional[str]:
+        if value is None:
+            return None
+
+        text = str(value)
+        if (text.startswith('"""') and text.endswith('"""')) or (
+            text.startswith("'''") and text.endswith("'''")
+        ):
+            text = text[3:-3]
+
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        text = re.sub(r"(?is)<br\\s*/?>", "\n", text)
+        text = re.sub(r"(?is)</?(?:div|p|blockquote|li|ul|ol|section)\\b[^>]*>", "\n", text)
+        text = re.sub(r"(?is)<a\\b[^>]*>(.*?)</a>", r"\\1", text)
+        text = re.sub(r"(?is)<[^>]+>", "", text)
+        text = html.unescape(text)
+        text = re.sub(r"[ \t]+", " ", text)
+        text = re.sub(r" *\n *", "\n", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        text = text.strip()
+        if not text:
+            return None
+
+        if drop_links:
+            parsed = urlparse(text)
+            if parsed.scheme in {"http", "https", "urn"}:
+                if parsed.fragment:
+                    text = parsed.fragment
+                else:
+                    path_name = Path(parsed.path).name if parsed.path else ""
+                    text = path_name or parsed.netloc or text
+
+            text = re.sub(r"(?i)\\b(?:https?://|urn:)\\S+", "", text).strip()
+            if not text:
+                return None
+
+        return text
+
     def build_nanopub(self, payload: dict):
         profile = load_profile()
         np_conf = NanopubConf(
@@ -147,7 +187,7 @@ class Reporter(ReporterBase):
             profile_orcid_ref = URIRef(str(profile_orcid))
             np.pubinfo.add((np._metadata.np_uri, DCTERMS.creator, profile_orcid_ref))
 
-        workflow_id_value = self.settings.workflow_id or "workflow"
+        workflow_id_value = self.plain_text(self.settings.workflow_id, drop_links=True) or "workflow"
         np.pubinfo.add((np._metadata.np_uri, RDFS.label, Literal(f"Snakemake workflow metadata: {workflow_id_value}")))
 
         # Use a single dataset node — no separate workflowrun indirection.
@@ -156,7 +196,7 @@ class Reporter(ReporterBase):
 
         # Put the most identifying triples first so they appear at the top of
         # the serialized assertion block.
-        workflow_id_term = self.make_term(self.settings.workflow_id)
+        workflow_id_term = self.make_term(workflow_id_value)
         if workflow_id_term is not None:
             np.assertion.add((subj, NANOPUB_SNK.describesWorkflow, workflow_id_term))
 
@@ -165,7 +205,8 @@ class Reporter(ReporterBase):
         np.assertion.add((subj, RDF.type, SCHEMA.Dataset))
 
         workflow = payload.get("workflow", {})
-        description_term = self.make_term(workflow.get("description"))
+        description_text = self.plain_text(workflow.get("description"))
+        description_term = self.make_term(description_text)
         if description_term is not None:
             np.assertion.add((subj, NANOPUB_SNK.description, description_term))
 
@@ -178,7 +219,12 @@ class Reporter(ReporterBase):
             config_node = sub[f"config-{idx}"]
             np.assertion.add((config_section_node, NANOPUB_SNK.hasConfigurationFile, config_node))
 
-            path_term = self.make_term(config_entry.get("path"))
+            config_path = config_entry.get("path")
+            config_identifier = None
+            if config_path is not None:
+                config_identifier = Path(str(config_path)).name or str(config_path)
+
+            path_term = self.make_term(config_identifier)
             if path_term is not None:
                 np.assertion.add((config_node, DCTERMS.identifier, path_term))
 
@@ -337,7 +383,8 @@ class Reporter(ReporterBase):
                 self.logger.info(f"Nanopub published successfully: {id}")
             except Exception as e:
                 self.logger.warning(
-                    "Nanopub created (not published). Set --report-nanopub-init-publish to publish."
+                    "Nanopub created (not published)."
+                    "Set --report-nanopub-main-server to publish."
                     f"The error during publication was: {e}"
                 )
                 self.logger.warning(f"Publication exception type: {type(e).__name__}")
