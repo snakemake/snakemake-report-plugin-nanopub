@@ -85,6 +85,12 @@ def _description_from_url(url: str) -> str:
     return host
 
 
+
+def _artifact_code_from_nanopub_id(nanopub_id: str) -> str:
+    parsed = urlparse(nanopub_id)
+    return parsed.path.rstrip("/").split("/")[-1]
+
+
 def _parse_nanopub_graph(data: str, content_type: str, logger: logging.Logger):
     try:
         rdflib = importlib.import_module("rdflib")
@@ -238,15 +244,20 @@ def _node_label(
     nanopub_id: str,
     text_width: int,
 ) -> str:
-    safe_description = _wrap_for_html(description, width=text_width)
     display_id = nanopub_id
     if display_id.startswith(NP_DISPLAY_PREFIX):
         display_id = display_id[len(NP_DISPLAY_PREFIX) :]
     safe_id = _wrap_for_html(display_id, width=text_width)
+    
+    description_row = ""
+    if description and description.strip():
+        safe_description = _wrap_for_html(description, width=text_width)
+        description_row = f"<TR><TD ALIGN=\"LEFT\">{safe_description}</TD></TR>"
+    
     return (
         "<<TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLPADDING=\"2\">"
         f"<TR><TD ALIGN=\"CENTER\"><B>{html.escape(title)}</B></TD></TR>"
-        f"<TR><TD ALIGN=\"LEFT\">{safe_description}</TD></TR>"
+        f"{description_row}"
         f"<TR><TD ALIGN=\"LEFT\"><FONT COLOR=\"lightgrey\">{safe_id}</FONT></TD></TR>"
         "</TABLE>>"
     )
@@ -277,11 +288,7 @@ def build_dot(
         logger=logger,
         node_title="Workflow",
     )
-    workflow_configuration_description = deduce_description(
-        workflow_configuration_id,
-        logger=logger,
-        node_title="Workflow Configuration",
-    )
+    workflow_configuration_description = ""
     report_description = deduce_description(
         report_id,
         logger=logger,
