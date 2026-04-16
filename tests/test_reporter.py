@@ -50,18 +50,21 @@ class TestReportSettings:
 
 class MockMetadata:
     """Mock for Snakemake workflow metadata."""
+
     def __init__(self):
         self.workflow_name = "test_workflow"
 
 
 class MockDAG:
     """Mock for Snakemake DAG."""
+
     def __init__(self):
         self.rules = {}
 
 
 class DummyReporter(Reporter):
     """Reporter subclass with minimal mocking for testing."""
+
     def __init__(self, **kwargs):
         # Set required attributes from ReporterBase
         self.jobs = kwargs.get("jobs", [])
@@ -288,7 +291,9 @@ class TestReporterPlainText:
     def test_plain_text_with_drop_links(self):
         """Test plain_text with drop_links option."""
         reporter = DummyReporter()
-        result = reporter.plain_text("Visit https://example.com for more", drop_links=True)
+        result = reporter.plain_text(
+            "Visit https://example.com for more", drop_links=True
+        )
         assert "example.com" not in result
         assert "Visit" in result
         assert "more" in result
@@ -388,7 +393,9 @@ class TestReporterBuildNanopub:
 
     @patch("snakemake_report_plugin_nanopub.load_profile")
     @patch("snakemake_report_plugin_nanopub.Nanopub")
-    def test_build_nanopub_with_profile_orcid(self, mock_nanopub_class, mock_load_profile):
+    def test_build_nanopub_with_profile_orcid(
+        self, mock_nanopub_class, mock_load_profile
+    ):
         """Test build_nanopub extracts ORCID from profile."""
         mock_profile = Mock()
         mock_profile.orcid_id = "0000-1111-2222-3333"
@@ -418,7 +425,8 @@ class TestReporterBuildNanopub:
 
         # Check that ORCID was added to pubinfo
         orcid_calls = [
-            call for call in mock_np.pubinfo.add.call_args_list
+            call
+            for call in mock_np.pubinfo.add.call_args_list
             if "orcid.org" in str(call)
         ]
         assert len(orcid_calls) > 0
