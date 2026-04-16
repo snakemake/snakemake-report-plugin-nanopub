@@ -73,7 +73,7 @@ def _wrap_for_html(value: str, width: int = 60) -> str:
     if current:
         lines.append(current)
 
-    return "<BR ALIGN=\"LEFT\"/>".join(html.escape(line) for line in lines)
+    return '<BR ALIGN="LEFT"/>'.join(html.escape(line) for line in lines)
 
 
 def _description_from_url(url: str) -> str:
@@ -83,7 +83,6 @@ def _description_from_url(url: str) -> str:
     if tail:
         return f"{host} / {tail}"
     return host
-
 
 
 def _artifact_code_from_nanopub_id(nanopub_id: str) -> str:
@@ -179,7 +178,9 @@ def deduce_description(
             )
             continue
 
-        graph = _parse_nanopub_graph(data=data, content_type=content_type, logger=logger)
+        graph = _parse_nanopub_graph(
+            data=data, content_type=content_type, logger=logger
+        )
         if graph is not None:
             break
 
@@ -248,17 +249,17 @@ def _node_label(
     if display_id.startswith(NP_DISPLAY_PREFIX):
         display_id = display_id[len(NP_DISPLAY_PREFIX) :]
     safe_id = _wrap_for_html(display_id, width=text_width)
-    
+
     description_row = ""
     if description and description.strip():
         safe_description = _wrap_for_html(description, width=text_width)
-        description_row = f"<TR><TD ALIGN=\"LEFT\">{safe_description}</TD></TR>"
-    
+        description_row = f'<TR><TD ALIGN="LEFT">{safe_description}</TD></TR>'
+
     return (
-        "<<TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLPADDING=\"2\">"
-        f"<TR><TD ALIGN=\"CENTER\"><B>{html.escape(title)}</B></TD></TR>"
+        '<<TABLE BORDER="0" CELLBORDER="0" CELLPADDING="2">'
+        f'<TR><TD ALIGN="CENTER"><B>{html.escape(title)}</B></TD></TR>'
         f"{description_row}"
-        f"<TR><TD ALIGN=\"LEFT\"><FONT COLOR=\"lightgrey\">{safe_id}</FONT></TD></TR>"
+        f'<TR><TD ALIGN="LEFT"><FONT COLOR="lightgrey">{safe_id}</FONT></TD></TR>'
         "</TABLE>>"
     )
 
