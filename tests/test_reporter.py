@@ -2,19 +2,15 @@
 
 import json
 from pathlib import Path
-from dataclasses import dataclass
-from typing import Optional
 from unittest.mock import Mock, MagicMock, patch
 import datetime
 
 import pytest
-from rdflib import Literal, URIRef, Namespace
+from rdflib import Literal, URIRef
 
 from snakemake_report_plugin_nanopub import (
     Reporter,
     ReportSettings,
-    NANOPUB_SNK,
-    SCHEMA,
 )
 
 
@@ -384,7 +380,7 @@ class TestReporterBuildNanopub:
             "rules_full": [],
         }
 
-        result = reporter.build_nanopub(payload)
+        reporter.build_nanopub(payload)
 
         # Verify nanopub was created
         assert mock_nanopub_class.called
@@ -421,7 +417,7 @@ class TestReporterBuildNanopub:
             "rules_full": [],
         }
 
-        result = reporter.build_nanopub(payload)
+        reporter.build_nanopub(payload)
 
         # Check that ORCID was added to pubinfo
         orcid_calls = [
@@ -473,7 +469,7 @@ class TestReporterBuildNanopub:
             ],
         }
 
-        result = reporter.build_nanopub(payload)
+        reporter.build_nanopub(payload)
 
         # Check that rules were processed
         assert mock_np.assertion.add.called
