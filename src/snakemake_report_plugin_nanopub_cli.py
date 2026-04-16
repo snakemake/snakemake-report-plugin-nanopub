@@ -261,6 +261,7 @@ def _resolve_line_color(value: str) -> str:
 def build_dot(
     dataset_id: str,
     workflow_id: str,
+    workflow_configuration_id: str,
     report_id: str,
     line_color: str,
     text_width: int,
@@ -275,6 +276,11 @@ def build_dot(
         workflow_id,
         logger=logger,
         node_title="Workflow",
+    )
+    workflow_configuration_description = deduce_description(
+        workflow_configuration_id,
+        logger=logger,
+        node_title="Workflow Configuration",
     )
     report_description = deduce_description(
         report_id,
@@ -294,6 +300,12 @@ def build_dot(
         workflow_id,
         text_width=text_width,
     )
+    workflow_configuration_label = _node_label(
+        "Workflow Configuration",
+        workflow_configuration_description,
+        workflow_configuration_id,
+        text_width=text_width,
+    )
     report_label = _node_label(
         "Workflow Report",
         report_description,
@@ -311,11 +323,14 @@ def build_dot(
 
   dataset [label={dataset_label}];
   workflow [label={workflow_label}];
+    workflow_configuration [label={workflow_configuration_label}];
   report [label={report_label}];
 
-    {{ rank=same; workflow; report; }}
+        {{ rank=same; workflow; report; }}
+        {{ rank=same; dataset; workflow_configuration; }}
 
   dataset -> workflow [label=\"used by\"];
+    workflow_configuration -> workflow [label="used this configuration"];
   workflow -> report [label=\"produces\"];
     report -> dataset [label=\"based upon\"];
 }}
@@ -353,7 +368,7 @@ def render_graph(dot: str, output_path: Path, graph_format: str) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Plot a three-node nanopub knowledge graph using Graphviz.",
+        description="Plot a four-node nanopub knowledge graph using Graphviz.",
     )
     parser.add_argument(
         "--dataset-nanopub-id",
@@ -366,6 +381,12 @@ def parse_args() -> argparse.Namespace:
         dest="workflow_nanopub_id",
         required=True,
         help="Nanopub ID (URL) of the workflow.",
+    )
+    parser.add_argument(
+        "--workflow-configuration-id",
+        dest="workflow_configuration_id",
+        required=True,
+        help="Nanopub ID (URL) of the workflow configuration.",
     )
     parser.add_argument(
         "--report-nanopub-id",
@@ -429,6 +450,7 @@ def main() -> None:
         dot = build_dot(
             dataset_id=args.dataset_nanopub_id,
             workflow_id=args.workflow_nanopub_id,
+            workflow_configuration_id=args.workflow_configuration_id,
             report_id=args.report_nanopub_id,
             line_color=args.line_color,
             text_width=args.text_width,
