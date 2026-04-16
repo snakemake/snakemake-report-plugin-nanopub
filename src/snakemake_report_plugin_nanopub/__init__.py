@@ -12,9 +12,10 @@ from rdflib import Literal, Namespace, RDF, URIRef
 from rdflib.namespace import DCTERMS, RDFS
 from rdflib.namespace import XSD
 
+from snakemake.logging import logger as snakemake_logger
 from snakemake_interface_common.exceptions import WorkflowError
 from snakemake_interface_report_plugins.reporter import ReporterBase
-from snakemake_interface_report_plugins.settings import ExecMode, ReportSettingsBase
+from snakemake_interface_report_plugins.settings import ReportSettingsBase
 from .validation import bind_nanopub_prefixes
 from .extraction import extract_everything
 
@@ -63,14 +64,17 @@ class ReportSettings(ReportSettingsBase):
 
 
 class Reporter(ReporterBase):
+    # We set a publishing threshold to avoid attempting to publish nanopubs
+    # that are too large for the server to handle.
+    # Here, 'quat' means RDF quads, which are the internal representation used by the
+    # nanopub library. The final published nanopub will be serialized to RDF triples, 
+    # but the library may use quads (subject, predicate, object, assertion_graph)
     _MAX_PUBLISH_QUADS = 300
 
     def __post_init__(self):
         self.generated_at = datetime.datetime.now(datetime.UTC).isoformat()
         self.dry_run = self.settings.dry_run
-
-    def get_exec_mode(self) -> ExecMode:
-        return ExecMode.DEFAULT
+        self.logger = snakemake_logger
 
     def _jsonable(self, value: Any):
         if isinstance(value, dict):
@@ -274,7 +278,7 @@ class Reporter(ReporterBase):
                     json.dump(payload, out, indent=2, ensure_ascii=False)
 
             np = self.build_nanopub(payload)
-            self.logger.info(f"Nanopub quad count before publish: {len(np.rdf)}")
+            self.logger.info(f"Nanopub RDF quadruple count before publish: {len(np.rdf)}")
             try:
                 _ = np.is_valid
                 self.logger.info("Nanopub validation passed before publish.")
@@ -288,7 +292,7 @@ class Reporter(ReporterBase):
             # compact assertion model that keeps only summary-level information.
             if len(np.rdf) > self._MAX_PUBLISH_QUADS:
                 self.logger.warning(
-                    f"Nanopub has {len(np.rdf)} quads (threshold {self._MAX_PUBLISH_QUADS}). Building compact nanopub for publish retry."
+                    f"Nanopub has {len(np.rdf)} RDF quadruples (threshold {self._MAX_PUBLISH_QUADS}). Building compact nanopub for publish retry."
                 )
                 compact_payload = dict(payload)
                 compact_payload["rules_full"] = []
@@ -298,7 +302,7 @@ class Reporter(ReporterBase):
                 compact_payload["html_reporter_derived"] = compact_html
                 np = self.build_nanopub(compact_payload)
                 self.logger.info(
-                    f"Compact nanopub quad count before publish: {len(np.rdf)}"
+                    f"Compact nanopub RDF quadruple count before publish: {len(np.rdf)}"
                 )
                 try:
                     _ = np.is_valid
