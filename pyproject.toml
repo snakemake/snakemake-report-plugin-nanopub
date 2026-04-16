@@ -19,6 +19,9 @@ plot-nanopub-knowledge-graph = "snakemake_report_plugin_nanopub_cli:main"
 [tool.pixi.pypi-dependencies]
 snakemake-report-plugin-nanopub = { path = ".", editable = true }
 
+[tool.pixi.dependencies]
+ruff = ">=0.10.0,<0.11"
+
 [project.urls]
 repository = "https://github.com/snakemake/snakemake-report-plugin-nanopub"
 documentation = "https://snakemake.github.io/snakemake-plugin-catalog/plugins/report/nanopub.html"
@@ -46,6 +49,11 @@ format = "ruff format"
 lint = "ruff check"
 qc = { depends-on = ["format", "lint"] }
 coverage-report = "coverage report -m"
+
+[tool.pixi.tasks]
+format = "ruff format"
+lint = "ruff check"
+qc = { depends-on = ["format", "lint"] }
 
 [tool.pixi.feature.dev.tasks.test]
 cmd = [
