@@ -21,7 +21,6 @@ from snakemake_interface_report_plugins.settings import ReportSettingsBase
 from .validation import bind_nanopub_prefixes
 from .extraction import extract_everything
 
-
 NANOPUB_SNK = Namespace("https://w3id.org/np/snakemake/")
 SCHEMA = Namespace("https://schema.org/")
 NPX = Namespace("http://purl.org/nanopub/x/")
@@ -69,7 +68,7 @@ class Reporter(ReporterBase):
     # We set a publishing threshold to avoid attempting to publish nanopubs
     # that are too large for the server to handle.
     # Here, 'quat' means RDF quads, which are the internal representation used by the
-    # nanopub library. The final published nanopub will be serialized to RDF triples, 
+    # nanopub library. The final published nanopub will be serialized to RDF triples,
     # but the library may use quads (subject, predicate, object, assertion_graph)
     _MAX_PUBLISH_QUADS = 300
 
@@ -134,7 +133,9 @@ class Reporter(ReporterBase):
 
         text = text.replace("\r\n", "\n").replace("\r", "\n")
         text = re.sub(r"(?is)<br\\s*/?>", "\n", text)
-        text = re.sub(r"(?is)</?(?:div|p|blockquote|li|ul|ol|section)\\b[^>]*>", "\n", text)
+        text = re.sub(
+            r"(?is)</?(?:div|p|blockquote|li|ul|ol|section)\\b[^>]*>", "\n", text
+        )
         text = re.sub(r"(?is)<a\\b[^>]*>(.*?)</a>", r"\\1", text)
         text = re.sub(r"(?is)<[^>]+>", "", text)
         text = html.unescape(text)
@@ -187,7 +188,13 @@ class Reporter(ReporterBase):
         np = Nanopub(conf=np_conf)
         sub = np._metadata.namespace
         np.pubinfo.add((np._metadata.np_uri, NPX.hasNanopubType, SCHEMA.Dataset))
-        np.pubinfo.add((np._metadata.np_uri, DCTERMS.created, Literal(self.generated_at, datatype=XSD.dateTime)))
+        np.pubinfo.add(
+            (
+                np._metadata.np_uri,
+                DCTERMS.created,
+                Literal(self.generated_at, datatype=XSD.dateTime),
+            )
+        )
 
         profile_orcid = None
         for attr in ("orcid_id", "orcid", "orcidid"):
@@ -201,8 +208,16 @@ class Reporter(ReporterBase):
             profile_orcid_ref = URIRef(str(profile_orcid))
             np.pubinfo.add((np._metadata.np_uri, DCTERMS.creator, profile_orcid_ref))
 
-        workflow_id_value = self.plain_text(self.settings.workflow_id, drop_links=True) or "workflow"
-        np.pubinfo.add((np._metadata.np_uri, RDFS.label, Literal(f"Snakemake workflow metadata: {workflow_id_value}")))
+        workflow_id_value = (
+            self.plain_text(self.settings.workflow_id, drop_links=True) or "workflow"
+        )
+        np.pubinfo.add(
+            (
+                np._metadata.np_uri,
+                RDFS.label,
+                Literal(f"Snakemake workflow metadata: {workflow_id_value}"),
+            )
+        )
 
         # Use a single dataset node — no separate workflowrun indirection.
         subj = sub["dataset"]
@@ -214,26 +229,34 @@ class Reporter(ReporterBase):
         if workflow_id_term is not None:
             np.assertion.add((subj, NANOPUB_SNK.describesWorkflow, workflow_id_term))
 
-        np.assertion.add((subj, NANOPUB_SNK.generatedAt,
-                          Literal(self.generated_at, datatype=XSD.dateTime)))
+        np.assertion.add(
+            (
+                subj,
+                NANOPUB_SNK.generatedAt,
+                Literal(self.generated_at, datatype=XSD.dateTime),
+            )
+        )
         np.assertion.add((subj, RDF.type, SCHEMA.Dataset))
 
         workflow = payload.get("workflow", {})
-        description_text = self.plain_text(
-            workflow.get("description"), strip_comment_lines=True
-        )
-        description_term = self.make_term(description_text)
+        description_term = self.make_term(workflow.get("description"))
         if description_term is not None:
             np.assertion.add((subj, NANOPUB_SNK.description, description_term))
 
         config_section_node = sub["workflow-configuration"]
-        np.assertion.add((workflow_node, NANOPUB_SNK.hasConfigurationSection, config_section_node))
-        np.assertion.add((config_section_node, RDFS.label, Literal("from workflow configuration")))
+        np.assertion.add(
+            (workflow_node, NANOPUB_SNK.hasConfigurationSection, config_section_node)
+        )
+        np.assertion.add(
+            (config_section_node, RDFS.label, Literal("from workflow configuration"))
+        )
 
         config_file_contents = workflow.get("config_file_contents", [])
         for idx, config_entry in enumerate(config_file_contents, start=1):
             config_node = sub[f"config-{idx}"]
-            np.assertion.add((config_section_node, NANOPUB_SNK.hasConfigurationFile, config_node))
+            np.assertion.add(
+                (config_section_node, NANOPUB_SNK.hasConfigurationFile, config_node)
+            )
 
             config_path = config_entry.get("path")
             config_identifier = None
@@ -290,12 +313,16 @@ class Reporter(ReporterBase):
                 software_labels.add(str(rule_name))
 
             for software in sorted(software_labels):
-                np.assertion.add((rule_node, NANOPUB_SNK.hasSoftwarePackage, Literal(software)))
+                np.assertion.add(
+                    (rule_node, NANOPUB_SNK.hasSoftwarePackage, Literal(software))
+                )
 
             if rule_name == "all":
                 aggregated_inputs = set(str(i) for i in rule.get("input", []) if i)
                 for rule_input in sorted(aggregated_inputs):
-                    np.assertion.add((rule_node, NANOPUB_SNK.hasInput, Literal(rule_input)))
+                    np.assertion.add(
+                        (rule_node, NANOPUB_SNK.hasInput, Literal(rule_input))
+                    )
             else:
                 aggregated_outputs = set(str(o) for o in rule.get("output", []) if o)
                 aggregated_outputs.update(rule_outputs.get(rule_name, set()))
@@ -305,8 +332,16 @@ class Reporter(ReporterBase):
             for idx, param in enumerate(rule.get("params", []), start=1):
                 param_node = sub[f"param-{self.safe_fragment(rule_name, 'rule')}-{idx}"]
                 np.assertion.add((param_node, RDF.type, NANOPUB_SNK.Parameterization))
-                np.assertion.add((rule_node, NANOPUB_SNK.hasParameterization, param_node))
-                np.assertion.add((param_node, NANOPUB_SNK.parameterIndex, Literal(idx, datatype=XSD.integer)))
+                np.assertion.add(
+                    (rule_node, NANOPUB_SNK.hasParameterization, param_node)
+                )
+                np.assertion.add(
+                    (
+                        param_node,
+                        NANOPUB_SNK.parameterIndex,
+                        Literal(idx, datatype=XSD.integer),
+                    )
+                )
                 term = self.make_term(param)
                 if term is not None:
                     np.assertion.add((param_node, NANOPUB_SNK.parameterValue, term))
@@ -346,7 +381,9 @@ class Reporter(ReporterBase):
                     json.dump(payload, out, indent=2, ensure_ascii=False)
 
             np = self.build_nanopub(payload)
-            self.logger.info(f"Nanopub RDF quadruple count before publish: {len(np.rdf)}")
+            self.logger.info(
+                f"Nanopub RDF quadruple count before publish: {len(np.rdf)}"
+            )
             try:
                 _ = np.is_valid
                 self.logger.info("Nanopub validation passed before publish.")
@@ -391,7 +428,9 @@ class Reporter(ReporterBase):
                 _ = np.is_valid
                 self.logger.info("Signed nanopub validation passed before publish.")
             except Exception as sign_error:
-                raise WorkflowError("Failed to sign or validate nanopub before publish.", sign_error)
+                raise WorkflowError(
+                    "Failed to sign or validate nanopub before publish.", sign_error
+                )
 
             self.logger.debug(f"Generated nanopub object: {np}")
             if self.dry_run:
