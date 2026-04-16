@@ -113,15 +113,24 @@ class Reporter(ReporterBase):
             return f"{prefix}-{uuid.uuid4()}"
         return quote(raw, safe="")
 
-    def plain_text(self, value: Any, drop_links: bool = False) -> Optional[str]:
+    def plain_text(
+        self,
+        value: Any,
+        drop_links: bool = False,
+        strip_comment_lines: bool = False,
+    ) -> Optional[str]:
         if value is None:
             return None
 
-        text = str(value)
+        text = str(value).strip()
         if (text.startswith('"""') and text.endswith('"""')) or (
             text.startswith("'''") and text.endswith("'''")
         ):
             text = text[3:-3]
+
+        # Handle serialized/escaped multiline payloads (e.g. "\\n" from JSON-like sources)
+        text = text.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\r", "\n")
+        text = text.replace('\\"', '"').replace("\\'", "'")
 
         text = text.replace("\r\n", "\n").replace("\r", "\n")
         text = re.sub(r"(?is)<br\\s*/?>", "\n", text)
@@ -129,8 +138,13 @@ class Reporter(ReporterBase):
         text = re.sub(r"(?is)<a\\b[^>]*>(.*?)</a>", r"\\1", text)
         text = re.sub(r"(?is)<[^>]+>", "", text)
         text = html.unescape(text)
-        text = re.sub(r"[ \t]+", " ", text)
-        text = re.sub(r" *\n *", "\n", text)
+
+        if strip_comment_lines:
+            text = "\n".join(
+                line for line in text.splitlines() if not line.lstrip().startswith("#")
+            )
+
+        text = "\n".join(line.rstrip() for line in text.splitlines())
         text = re.sub(r"\n{3,}", "\n\n", text)
         text = text.strip()
         if not text:
@@ -205,7 +219,9 @@ class Reporter(ReporterBase):
         np.assertion.add((subj, RDF.type, SCHEMA.Dataset))
 
         workflow = payload.get("workflow", {})
-        description_text = self.plain_text(workflow.get("description"))
+        description_text = self.plain_text(
+            workflow.get("description"), strip_comment_lines=True
+        )
         description_term = self.make_term(description_text)
         if description_term is not None:
             np.assertion.add((subj, NANOPUB_SNK.description, description_term))
@@ -228,12 +244,18 @@ class Reporter(ReporterBase):
             if path_term is not None:
                 np.assertion.add((config_node, DCTERMS.identifier, path_term))
 
-            content_term = self.make_term(config_entry.get("content"))
+            cleaned_content = self.plain_text(
+                config_entry.get("content"), strip_comment_lines=True
+            )
+            content_term = self.make_term(cleaned_content)
             if content_term is not None:
                 np.assertion.add((config_node, SCHEMA.text, content_term))
 
         if not config_file_contents:
-            config_term = self.make_term(workflow.get("config"))
+            cleaned_config = self.plain_text(
+                workflow.get("config"), strip_comment_lines=True
+            )
+            config_term = self.make_term(cleaned_config)
             if config_term is not None:
                 np.assertion.add((config_section_node, SCHEMA.text, config_term))
 
