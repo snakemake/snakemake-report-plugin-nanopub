@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, MagicMock, patch
 import datetime
 
 import pytest
@@ -376,7 +376,7 @@ class TestReporterBuildNanopub:
             "rules_full": [],
         }
 
-        result = reporter.build_nanopub(payload)
+        reporter.build_nanopub(payload)
 
         # Verify nanopub was created
         assert mock_nanopub_class.called
@@ -411,7 +411,7 @@ class TestReporterBuildNanopub:
             "rules_full": [],
         }
 
-        result = reporter.build_nanopub(payload)
+        reporter.build_nanopub(payload)
 
         # Check that ORCID was added to pubinfo
         orcid_calls = [
@@ -445,11 +445,10 @@ class TestReporterBuildNanopub:
                 mock_ns_dict[key] = f"http://purl.org/nanopub/temp/{key}"
             return mock_ns_dict[key]
 
-        mock_np._metadata.namespace = {
-            "__getitem__": namespace_getitem,
-            "dataset": "http://purl.org/nanopub/temp/dataset",
-            "workflow-configuration": "http://purl.org/nanopub/temp/workflow-config",
-        }
+        # Use MagicMock with side_effect (not return_value) to properly intercept __getitem__ calls
+        mock_namespace = MagicMock()
+        mock_namespace.__getitem__ = Mock(side_effect=namespace_getitem)
+        mock_np._metadata.namespace = mock_namespace
         mock_np._metadata.np_uri = "http://purl.org/nanopub/temp/np"
         mock_np.pubinfo = Mock()
         mock_np.pubinfo.add = Mock()
@@ -472,7 +471,7 @@ class TestReporterBuildNanopub:
             ],
         }
 
-        result = reporter.build_nanopub(payload)
+        reporter.build_nanopub(payload)
 
         # Check that rules were processed
         assert mock_np.assertion.add.called

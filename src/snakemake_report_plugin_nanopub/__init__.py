@@ -121,7 +121,7 @@ class Reporter(ReporterBase):
         if value is None:
             return None
 
-        text = str(value).strip()
+        text = str(value).strip("\r\n")
         if (text.startswith('"""') and text.endswith('"""')) or (
             text.startswith("'''") and text.endswith("'''")
         ):
@@ -132,11 +132,11 @@ class Reporter(ReporterBase):
         text = text.replace('\\"', '"').replace("\\'", "'")
 
         text = text.replace("\r\n", "\n").replace("\r", "\n")
-        text = re.sub(r"(?is)<br\\s*/?>", "\n", text)
+        text = re.sub(r"(?is)<br\s*/?>", "\n", text)
         text = re.sub(
-            r"(?is)</?(?:div|p|blockquote|li|ul|ol|section)\\b[^>]*>", "\n", text
+            r"(?is)</?(?:div|p|blockquote|li|ul|ol|section)\b[^>]*>", "\n", text
         )
-        text = re.sub(r"(?is)<a\\b[^>]*>(.*?)</a>", r"\\1", text)
+        text = re.sub(r"(?is)<a\b[^>]*>(.*?)</a>", r"\1", text)
         text = re.sub(r"(?is)<[^>]+>", "", text)
         text = html.unescape(text)
 
@@ -145,10 +145,20 @@ class Reporter(ReporterBase):
                 line for line in text.splitlines() if not line.lstrip().startswith("#")
             )
 
-        text = "\n".join(line.rstrip() for line in text.splitlines())
+        lines = text.splitlines()
+        lines = [line.rstrip() for line in lines]
+        # Strip leading/trailing blank lines while preserving per-line indentation
+        while lines and not lines[0].strip():
+            lines.pop(0)
+        while lines and not lines[-1].strip():
+            lines.pop()
+        text = "\n".join(lines)
         text = re.sub(r"\n{3,}", "\n\n", text)
-        text = text.strip()
-        if not text:
+        # For single-line results, strip surrounding whitespace fully;
+        # for multi-line results, indentation is already preserved per-line.
+        if "\n" not in text:
+            text = text.strip()
+        if not text.strip():
             return None
 
         if drop_links:
@@ -160,7 +170,11 @@ class Reporter(ReporterBase):
                     path_name = Path(parsed.path).name if parsed.path else ""
                     text = path_name or parsed.netloc or text
 
-            text = re.sub(r"(?i)\\b(?:https?://|urn:)\\S+", "", text).strip()
+            text = re.sub(
+                r"(?i)\b(?:https?://|urn:)\S+",
+                lambda m: urlparse(m.group(0)).fragment,
+                text,
+            ).strip()
             if not text:
                 return None
 
