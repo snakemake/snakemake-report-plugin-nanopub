@@ -121,7 +121,7 @@ class Reporter(ReporterBase):
         if value is None:
             return None
 
-        text = str(value).strip("\r\n")
+        text = str(value).strip()
         if (text.startswith('"""') and text.endswith('"""')) or (
             text.startswith("'''") and text.endswith("'''")
         ):
@@ -145,20 +145,10 @@ class Reporter(ReporterBase):
                 line for line in text.splitlines() if not line.lstrip().startswith("#")
             )
 
-        lines = text.splitlines()
-        lines = [line.rstrip() for line in lines]
-        # Strip leading/trailing blank lines while preserving per-line indentation
-        while lines and not lines[0].strip():
-            lines.pop(0)
-        while lines and not lines[-1].strip():
-            lines.pop()
-        text = "\n".join(lines)
+        text = "\n".join(line.rstrip() for line in text.splitlines())
         text = re.sub(r"\n{3,}", "\n\n", text)
-        # For single-line results, strip surrounding whitespace fully;
-        # for multi-line results, indentation is already preserved per-line.
-        if "\n" not in text:
-            text = text.strip()
-        if not text.strip():
+        text = text.strip()
+        if not text:
             return None
 
         if drop_links:
@@ -170,11 +160,7 @@ class Reporter(ReporterBase):
                     path_name = Path(parsed.path).name if parsed.path else ""
                     text = path_name or parsed.netloc or text
 
-            text = re.sub(
-                r"(?i)\b(?:https?://|urn:)\S+",
-                lambda m: urlparse(m.group(0)).fragment,
-                text,
-            ).strip()
+            text = re.sub(r"(?i)\\b(?:https?://|urn:)\\S+", "", text).strip()
             if not text:
                 return None
 
@@ -221,6 +207,7 @@ class Reporter(ReporterBase):
                 profile_orcid = f"https://orcid.org/{profile_orcid}"
             profile_orcid_ref = URIRef(str(profile_orcid))
             np.pubinfo.add((np._metadata.np_uri, DCTERMS.creator, profile_orcid_ref))
+            np.pubinfo.add((np._metadata.np_uri, NPX.signedBy, profile_orcid_ref))
 
         workflow_id_value = (
             self.plain_text(self.settings.workflow_id, drop_links=True) or "workflow"
