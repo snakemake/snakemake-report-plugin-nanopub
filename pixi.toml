@@ -24,3 +24,6 @@ lint = "ruff check"
 qc = { depends-on = ["format", "lint"] }
 test = "pytest"
 coverage-report = "pytest --cov=src/snakemake_report_plugin_nanopub --cov-report=term-missing --cov-report=html"
+
+[system-requirements]
+linux = "4.18"
