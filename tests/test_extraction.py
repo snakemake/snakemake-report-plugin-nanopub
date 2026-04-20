@@ -220,3 +220,71 @@ def test_extract_everything_handles_optional_html_derived_failure(
         for warning in logger.warnings
     )
     assert any("traceback" in debug for debug in logger.debugs)
+
+
+def _make_minimal_extract_everything_kwargs(monkeypatch, tmp_path, jsonable):
+    """Return minimal kwargs for extract_everything that won't error on imports."""
+    logger = DummyLogger()
+    rules = []
+    dag = SimpleNamespace(
+        jobs=[],
+        workflow=SimpleNamespace(
+            configfiles=[],
+            config={},
+            rules=rules,
+        ),
+    )
+
+    monkeypatch.setattr(
+        extraction,
+        "rulegraph_spec",
+        lambda dag_arg: ({"nodes": [], "links": [], "links_direct": []}, None, None),
+    )
+
+    fake_html = SimpleNamespace(
+        render_categories=lambda results: "[]",
+        render_results=lambda results, mode_embedded=True: "[]",
+        render_rules=lambda rules_arg: "[]",
+        get_packages=lambda: SimpleNamespace(get_json=lambda: "{}"),
+        render_metadata=lambda metadata: "{}",
+    )
+    monkeypatch.setattr(extraction, "html_data", fake_html)
+
+    return {
+        "rules": rules,
+        "results": [],
+        "metadata": {},
+        "dag": dag,
+        "workflow_description": "desc",
+        "generated_at": "2026-01-01T00:00:00",
+        "jsonable": jsonable,
+        "logger": logger,
+    }
+
+
+def test_ts_iso_none_starttime(monkeypatch, tmp_path, jsonable):
+    """ts_iso(None) should return None, covering the early-return branch."""
+    kwargs = _make_minimal_extract_everything_kwargs(monkeypatch, tmp_path, jsonable)
+    # A job with starttime=None triggers ts_iso(None) → return None
+    job_with_none_start = DummyJob("rule_x", starttime=None, endtime=2.0)
+    payload = extraction.extract_everything(jobs=[job_with_none_start], **kwargs)
+
+    timeline = payload["html_reporter_derived"].get("timeline", [])
+    assert any(entry["starttime"] is None for entry in timeline)
+
+
+def test_ts_iso_os_error_branch(monkeypatch, tmp_path, jsonable):
+    """When datetime.fromtimestamp raises OSError, ts_iso should return None."""
+    from unittest.mock import patch
+
+    kwargs = _make_minimal_extract_everything_kwargs(monkeypatch, tmp_path, jsonable)
+    job = DummyJob("rule_y", starttime=1.0, endtime=2.0)
+
+    with patch("snakemake_report_plugin_nanopub.extraction.datetime") as mock_dt:
+        mock_dt.datetime.fromtimestamp.side_effect = OSError("bad timestamp")
+        payload = extraction.extract_everything(jobs=[job], **kwargs)
+
+    timeline = payload["html_reporter_derived"].get("timeline", [])
+    # All timestamps should be None because fromtimestamp always raised OSError.
+    assert all(entry["starttime"] is None for entry in timeline)
+    assert all(entry["endtime"] is None for entry in timeline)

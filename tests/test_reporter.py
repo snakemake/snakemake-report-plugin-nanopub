@@ -118,6 +118,16 @@ class TestReporterJsonable:
         assert reporter._jsonable(True) is True
         assert reporter._jsonable(None) is None
 
+    def test_jsonable_unknown_type(self):
+        """Test _jsonable falls back to str() for types it doesn't recognise."""
+        reporter = DummyReporter()
+        import datetime as dt
+
+        now = dt.datetime(2024, 1, 1, 12, 0, 0)
+        result = reporter._jsonable(now)
+        assert isinstance(result, str)
+        assert "2024" in result
+
     def test_jsonable_nested_complex(self):
         """Test _jsonable with deeply nested structures."""
         reporter = DummyReporter()
@@ -574,3 +584,154 @@ class TestReporterBuildNanopub:
         assert reporter.dry_run is False
         assert reporter.logger is not None
         assert reporter.generated_at is not None
+
+
+def _make_mock_np(mock_nanopub_class, mock_load_profile):
+    """Shared mock-nanopub setup reused by multiple build_nanopub tests."""
+    mock_profile = Mock()
+    mock_profile.orcid_id = None
+    mock_load_profile.return_value = mock_profile
+
+    mock_ns_dict = {}
+
+    def namespace_getitem(key):
+        if key not in mock_ns_dict:
+            mock_ns_dict[key] = f"http://purl.org/nanopub/temp/{key}"
+        return mock_ns_dict[key]
+
+    mock_np = Mock()
+    mock_np._metadata = Mock()
+    mock_namespace = MagicMock()
+    mock_namespace.__getitem__ = Mock(side_effect=namespace_getitem)
+    mock_np._metadata.namespace = mock_namespace
+    mock_np._metadata.np_uri = "http://purl.org/nanopub/temp/np"
+    mock_np.pubinfo = Mock()
+    mock_np.pubinfo.add = Mock()
+    mock_np.assertion = Mock()
+    mock_np.assertion.add = Mock()
+    mock_nanopub_class.return_value = mock_np
+    return mock_np
+
+
+class TestBuildNanopubExtraPaths:
+    """Additional build_nanopub tests to improve branch coverage."""
+
+    @patch("snakemake_report_plugin_nanopub.load_profile")
+    @patch("snakemake_report_plugin_nanopub.Nanopub")
+    def test_build_nanopub_with_config_file_contents(
+        self, mock_nanopub_class, mock_load_profile
+    ):
+        """Config file entries in the payload are stored as triples (covers the
+        config_file_contents for-loop body, including the no-path branch)."""
+        mock_np = _make_mock_np(mock_nanopub_class, mock_load_profile)
+
+        reporter = DummyReporter()
+        payload = {
+            "workflow": {
+                "config_file_contents": [
+                    {"path": "/etc/workflow/config.yaml", "content": "threads: 8"},
+                    {"path": None, "content": None},  # no path → no identifier triple
+                ],
+            },
+            "jobs_full": [],
+            "rules_full": [],
+        }
+
+        reporter.build_nanopub(payload)
+
+        assert mock_np.assertion.add.called
+
+    @patch("snakemake_report_plugin_nanopub.load_profile")
+    @patch("snakemake_report_plugin_nanopub.Nanopub")
+    def test_build_nanopub_shell_rule_adds_shell_label(
+        self, mock_nanopub_class, mock_load_profile
+    ):
+        """A rule that is_shell and has a shellcmd gets 'shell' as software label."""
+        mock_np = _make_mock_np(mock_nanopub_class, mock_load_profile)
+
+        reporter = DummyReporter()
+        payload = {
+            "workflow": {},
+            "jobs_full": [],
+            "rules_full": [
+                {
+                    "name": "shell_rule",
+                    "is_shell": True,
+                    "shellcmd": "echo hello",
+                    # No wrapper/script/notebook/conda_env/container_img
+                }
+            ],
+        }
+
+        reporter.build_nanopub(payload)
+
+        software_literals = [
+            str(call_args[0][0][2])
+            for call_args in mock_np.assertion.add.call_args_list
+            if len(call_args[0]) == 1
+            and len(call_args[0][0]) == 3
+            and call_args[0][0][1] == NANOPUB_SNK.hasSoftwarePackage
+        ]
+        assert "shell" in software_literals
+
+    @patch("snakemake_report_plugin_nanopub.load_profile")
+    @patch("snakemake_report_plugin_nanopub.Nanopub")
+    def test_build_nanopub_no_software_label_falls_back_to_rule_name(
+        self, mock_nanopub_class, mock_load_profile
+    ):
+        """A rule with no identifiable software label falls back to the rule name."""
+        mock_np = _make_mock_np(mock_nanopub_class, mock_load_profile)
+
+        reporter = DummyReporter()
+        payload = {
+            "workflow": {},
+            "jobs_full": [],
+            "rules_full": [
+                {
+                    "name": "plain_rule",
+                    "is_shell": False,
+                    # None of wrapper/script/notebook/conda_env/container_img set
+                }
+            ],
+        }
+
+        reporter.build_nanopub(payload)
+
+        software_literals = [
+            str(call_args[0][0][2])
+            for call_args in mock_np.assertion.add.call_args_list
+            if len(call_args[0]) == 1
+            and len(call_args[0][0]) == 3
+            and call_args[0][0][1] == NANOPUB_SNK.hasSoftwarePackage
+        ]
+        assert "plain_rule" in software_literals
+
+    @patch("snakemake_report_plugin_nanopub.load_profile")
+    @patch("snakemake_report_plugin_nanopub.Nanopub")
+    def test_build_nanopub_skips_all_rule(
+        self, mock_nanopub_class, mock_load_profile
+    ):
+        """Rules named 'all' should be silently skipped."""
+        mock_np = _make_mock_np(mock_nanopub_class, mock_load_profile)
+
+        reporter = DummyReporter()
+        payload = {
+            "workflow": {},
+            "jobs_full": [],
+            "rules_full": [
+                {"name": "all", "wrapper": "some/wrapper"},
+            ],
+        }
+
+        reporter.build_nanopub(payload)
+
+        # No WorkflowRule triple should have been added for the skipped rule.
+        rule_type_calls = [
+            call_args
+            for call_args in mock_np.assertion.add.call_args_list
+            if len(call_args[0]) == 1
+            and len(call_args[0][0]) == 3
+            and call_args[0][0][1] == NANOPUB_SNK.ruleName
+        ]
+        # No ruleName triple for "all".
+        assert not any("all" in str(c) for c in rule_type_calls)
