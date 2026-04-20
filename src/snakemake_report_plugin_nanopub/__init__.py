@@ -69,8 +69,10 @@ class Reporter(ReporterBase):
     # that are too large for the server to handle.
     # Here, 'quat' means RDF quads, which are the internal representation used by the
     # nanopub library. The final published nanopub will be serialized to RDF triples,
-    # but the library may use quads (subject, predicate, object, assertion_graph)
-    _MAX_PUBLISH_QUADS = 300
+    # but the library may use quads (subject, predicate, object, assertion_graph).
+    # 586 quads triggered HTTP 400 on the registry; 441 (rules-stripped + full jobs)
+    # is empirically safe, so set the threshold at 500.
+    _MAX_PUBLISH_QUADS = 500
 
     def __post_init__(self):
         self.generated_at = datetime.datetime.now(datetime.UTC).isoformat()
@@ -135,6 +137,18 @@ class Reporter(ReporterBase):
         text = re.sub(r"(?is)<br\s*/?>", "\n", text)
         text = re.sub(
             r"(?is)</?(?:div|p|blockquote|li|ul|ol|section)\b[^>]*>", "\n", text
+        )
+
+        def _anchor_to_text(match: re.Match) -> str:
+            href = html.unescape(match.group(1).strip())
+            label = re.sub(r"(?is)<[^>]+>", "", match.group(2) or "")
+            label = html.unescape(label).strip()
+            return f"{label} [{href}]" if label else f"[{href}]"
+
+        text = re.sub(
+            r"(?is)<a\b[^>]*href=[\"']([^\"']+)[\"'][^>]*>(.*?)</a>",
+            _anchor_to_text,
+            text,
         )
         text = re.sub(r"(?is)<a\b[^>]*>(.*?)</a>", r"\1", text)
         text = re.sub(r"(?is)<[^>]+>", "", text)
@@ -254,7 +268,8 @@ class Reporter(ReporterBase):
         np.assertion.add((subj, RDF.type, SCHEMA.Dataset))
 
         workflow = payload.get("workflow", {})
-        description_term = self.make_term(workflow.get("description"))
+        description_value = self.plain_text(workflow.get("description"))
+        description_term = self.make_term(description_value)
         if description_term is not None:
             np.assertion.add((subj, NANOPUB_SNK.description, description_term))
 
@@ -307,11 +322,17 @@ class Reporter(ReporterBase):
                 if out:
                     rule_outputs[rule_name].add(str(out))
 
+        # The Snakemake "all" target rule is a pure aggregator: it carries no
+        # scientific content but lists every final output as an input, producing
+        # dozens of hasInput triples that inflate the quad count significantly.
+        _SKIP_RULES = {"all"}
+
         for rule in payload.get("rules_full", []):
             rule_name = rule.get("name", "rule")
+            if rule_name in _SKIP_RULES:
+                continue
             rule_node = sub[f"rule-{self.safe_fragment(rule_name, 'rule')}"]
             np.assertion.add((rule_node, RDF.type, NANOPUB_SNK.WorkflowRule))
-            np.assertion.add((workflow_node, NANOPUB_SNK.hasRule, rule_node))
 
             name_term = self.make_term(rule_name)
             if name_term is not None:
@@ -332,17 +353,16 @@ class Reporter(ReporterBase):
                     (rule_node, NANOPUB_SNK.hasSoftwarePackage, Literal(software))
                 )
 
-            if rule_name == "all":
-                aggregated_inputs = set(str(i) for i in rule.get("input", []) if i)
-                for rule_input in sorted(aggregated_inputs):
-                    np.assertion.add(
-                        (rule_node, NANOPUB_SNK.hasInput, Literal(rule_input))
-                    )
-            else:
-                aggregated_outputs = set(str(o) for o in rule.get("output", []) if o)
-                aggregated_outputs.update(rule_outputs.get(rule_name, set()))
-                for out in sorted(aggregated_outputs):
-                    np.assertion.add((rule_node, NANOPUB_SNK.hasOutput, Literal(out)))
+            aggregated_outputs = set(str(o) for o in rule.get("output", []) if o)
+            aggregated_outputs.update(rule_outputs.get(rule_name, set()))
+            # If the rule has any wildcard patterns (e.g. "{sample}_out.txt"),
+            # the concrete instantiations are redundant — keep only the patterns.
+            wildcard_outputs = {
+                o for o in aggregated_outputs if re.search(r"\{[^}]+\}", o)
+            }
+            emit_outputs = wildcard_outputs if wildcard_outputs else aggregated_outputs
+            for out in sorted(emit_outputs):
+                np.assertion.add((rule_node, NANOPUB_SNK.hasOutput, Literal(out)))
 
             for idx, param in enumerate(rule.get("params", []), start=1):
                 param_node = sub[f"param-{self.safe_fragment(rule_name, 'rule')}-{idx}"]
@@ -374,6 +394,27 @@ class Reporter(ReporterBase):
                     )
                 )
 
+        for idx, job in enumerate(payload.get("jobs_full", []), start=1):
+            job_rule_name = str(job.get("rule", "job"))
+            job_node = sub[f"job-{idx}-{self.safe_fragment(job_rule_name, 'job')}"]
+            np.assertion.add((job_node, RDF.type, NANOPUB_SNK.WorkflowJob))
+
+            job_rule_term = self.make_term(job_rule_name)
+            if job_rule_term is not None:
+                np.assertion.add((job_node, NANOPUB_SNK.ruleName, job_rule_term))
+
+            for job_input in job.get("input", []) or []:
+                if job_input:
+                    np.assertion.add(
+                        (job_node, NANOPUB_SNK.hasInput, Literal(str(job_input)))
+                    )
+
+            for job_output in job.get("output", []) or []:
+                if job_output:
+                    np.assertion.add(
+                        (job_node, NANOPUB_SNK.hasOutput, Literal(str(job_output)))
+                    )
+
         return np
 
     def render(self):
@@ -397,8 +438,26 @@ class Reporter(ReporterBase):
 
             np = self.build_nanopub(payload)
             self.logger.info(
-                f"Nanopub RDF quadruple count before publish: {len(np.rdf)}"
+                f"Nanopub RDF quadruple count (full): {len(np.rdf)} "
+                f"(rules: {len(payload.get('rules_full', []))}, "
+                f"jobs: {len(payload.get('jobs_full', []))})"
             )
+
+            # In dry-run mode print the complete uncompacted nanopub so that all
+            # serialized content (rules, jobs, …) is visible for inspection.
+            if self.dry_run:
+                np = bind_nanopub_prefixes(np)
+                try:
+                    np.sign()
+                    np = bind_nanopub_prefixes(np)
+                except Exception as sign_error:
+                    raise WorkflowError("Failed to sign nanopub (dry run).", sign_error)
+                self.logger.info(
+                    f"Dry run: full nanopub content ({len(np.rdf)} quads):"
+                    f"\n\n{np.rdf.serialize(format='trig')}"
+                )
+                sys.exit(0)
+
             try:
                 _ = np.is_valid
                 self.logger.info("Nanopub validation passed before publish.")
@@ -412,18 +471,44 @@ class Reporter(ReporterBase):
             # compact assertion model that keeps only summary-level information.
             if len(np.rdf) > self._MAX_PUBLISH_QUADS:
                 self.logger.warning(
-                    f"Nanopub has {len(np.rdf)} RDF quadruples (threshold {self._MAX_PUBLISH_QUADS}). Building compact nanopub for publish retry."
+                    f"Nanopub has {len(np.rdf)} RDF quadruples (threshold "
+                    f"{self._MAX_PUBLISH_QUADS}). Building compact nanopub for publish retry."
                 )
                 compact_payload = dict(payload)
                 compact_payload["rules_full"] = []
-                compact_payload["jobs_full"] = []
-                compact_html = dict(compact_payload.get("html_reporter_derived", {}))
-                compact_html["packages"] = {}
-                compact_payload["html_reporter_derived"] = compact_html
                 np = self.build_nanopub(compact_payload)
                 self.logger.info(
-                    f"Compact nanopub RDF quadruple count before publish: {len(np.rdf)}"
+                    f"Rules-compact nanopub RDF quadruple count: {len(np.rdf)}"
                 )
+
+                if len(np.rdf) > self._MAX_PUBLISH_QUADS:
+                    # Intermediate: keep only job identity and drop IO lists.
+                    slim_jobs = [
+                        {"rule": j.get("rule")} for j in payload.get("jobs_full", [])
+                    ]
+                    compact_payload["jobs_full"] = slim_jobs
+                    np = self.build_nanopub(compact_payload)
+                    self.logger.info(
+                        f"Slim-jobs nanopub RDF quadruple count: {len(np.rdf)} "
+                        f"({len(slim_jobs)} job nodes, no timing/IO detail)"
+                    )
+
+                if len(np.rdf) > self._MAX_PUBLISH_QUADS:
+                    self.logger.warning(
+                        f"Slim-jobs nanopub still has {len(np.rdf)} RDF quadruples "
+                        f"(threshold {self._MAX_PUBLISH_QUADS}). Removing jobs and rebuilding."
+                    )
+                    compact_payload["jobs_full"] = []
+                    compact_html = dict(
+                        compact_payload.get("html_reporter_derived", {})
+                    )
+                    compact_html["packages"] = {}
+                    compact_payload["html_reporter_derived"] = compact_html
+                    np = self.build_nanopub(compact_payload)
+                    self.logger.info(
+                        f"Fully compact nanopub RDF quadruple count: {len(np.rdf)}"
+                    )
+
                 try:
                     _ = np.is_valid
                     self.logger.info(
@@ -446,13 +531,6 @@ class Reporter(ReporterBase):
                 raise WorkflowError(
                     "Failed to sign or validate nanopub before publish.", sign_error
                 )
-
-            self.logger.debug(f"Generated nanopub object: {np}")
-            if self.dry_run:
-                self.logger.info(
-                    f"Dry run: full nanopub content:\n{np.rdf.serialize(format='trig')}"
-                )
-                sys.exit(0)
 
             try:
                 id = np.publish()
