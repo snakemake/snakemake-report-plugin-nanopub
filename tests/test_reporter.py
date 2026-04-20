@@ -708,9 +708,7 @@ class TestBuildNanopubExtraPaths:
 
     @patch("snakemake_report_plugin_nanopub.load_profile")
     @patch("snakemake_report_plugin_nanopub.Nanopub")
-    def test_build_nanopub_skips_all_rule(
-        self, mock_nanopub_class, mock_load_profile
-    ):
+    def test_build_nanopub_skips_all_rule(self, mock_nanopub_class, mock_load_profile):
         """Rules named 'all' should be silently skipped."""
         mock_np = _make_mock_np(mock_nanopub_class, mock_load_profile)
 

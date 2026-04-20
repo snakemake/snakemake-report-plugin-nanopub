@@ -94,7 +94,7 @@ def _artifact_code_from_nanopub_id(nanopub_id: str) -> str:
 def _strip_display_prefix(nanopub_id: str) -> str:
     for prefix in NP_DISPLAY_PREFIXES:
         if nanopub_id.startswith(prefix):
-            return nanopub_id[len(prefix):]
+            return nanopub_id[len(prefix) :]
     return nanopub_id
 
 

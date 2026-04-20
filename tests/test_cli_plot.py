@@ -46,7 +46,9 @@ def test_node_label_strips_http_np_prefix_and_omits_description_when_requested()
     assert "this should not be rendered" not in label
 
 
-def test_build_dot_workflow_configuration_has_no_description_and_stripped_id(monkeypatch):
+def test_build_dot_workflow_configuration_has_no_description_and_stripped_id(
+    monkeypatch,
+):
     monkeypatch.setattr(
         cli,
         "deduce_description",
@@ -87,8 +89,14 @@ def test_description_from_url():
 
 
 def test_artifact_code_from_nanopub_id():
-    assert cli._artifact_code_from_nanopub_id("https://w3id.org/np/RAexample123") == "RAexample123"
-    assert cli._artifact_code_from_nanopub_id("https://w3id.org/np/RAexample123/") == "RAexample123"
+    assert (
+        cli._artifact_code_from_nanopub_id("https://w3id.org/np/RAexample123")
+        == "RAexample123"
+    )
+    assert (
+        cli._artifact_code_from_nanopub_id("https://w3id.org/np/RAexample123/")
+        == "RAexample123"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -143,7 +151,9 @@ def test_parse_nanopub_graph_content_type_turtle():
 def test_parse_nanopub_graph_content_type_nquads():
     """Valid N-Quads data with 'application/n-quads' header should parse."""
     data = '<http://example.com/s> <http://purl.org/dc/terms/description> "hello" <http://example.com/g> .\n'
-    graph = cli._parse_nanopub_graph(data, "application/n-quads", logging.getLogger("test"))
+    graph = cli._parse_nanopub_graph(
+        data, "application/n-quads", logging.getLogger("test")
+    )
     assert graph is not None
 
 
@@ -158,7 +168,9 @@ def test_parse_nanopub_graph_content_type_rdf_xml():
         "  </rdf:Description>"
         "</rdf:RDF>"
     )
-    graph = cli._parse_nanopub_graph(data, "application/rdf+xml", logging.getLogger("test"))
+    graph = cli._parse_nanopub_graph(
+        data, "application/rdf+xml", logging.getLogger("test")
+    )
     assert graph is not None
 
 
@@ -169,7 +181,9 @@ def test_parse_nanopub_graph_content_type_jsonld():
         ' "@id": "http://example.com/s",'
         ' "dc:description": "hello"}'
     )
-    graph = cli._parse_nanopub_graph(data, "application/ld+json", logging.getLogger("test"))
+    graph = cli._parse_nanopub_graph(
+        data, "application/ld+json", logging.getLogger("test")
+    )
     assert graph is not None
 
 
@@ -180,7 +194,9 @@ def test_parse_nanopub_graph_content_type_trig():
         "@prefix ex: <http://example.com/> .\n"
         "ex:g { ex:s dc:description 'hello' . }\n"
     )
-    graph = cli._parse_nanopub_graph(data, "application/trig", logging.getLogger("test"))
+    graph = cli._parse_nanopub_graph(
+        data, "application/trig", logging.getLogger("test")
+    )
     assert graph is not None
 
 
@@ -196,8 +212,13 @@ def test_deduce_description_network_failure():
     from unittest.mock import patch
 
     logger = logging.getLogger("test")
-    with patch("snakemake_report_plugin_nanopub_graph.urlopen", side_effect=Exception("net error")):
-        result = cli.deduce_description("https://w3id.org/np/RAtest", logger, "Test Node")
+    with patch(
+        "snakemake_report_plugin_nanopub_graph.urlopen",
+        side_effect=Exception("net error"),
+    ):
+        result = cli.deduce_description(
+            "https://w3id.org/np/RAtest", logger, "Test Node"
+        )
 
     assert "w3id.org" in result or "RAtest" in result
 
@@ -214,7 +235,9 @@ def test_deduce_description_graph_parse_fails():
     with patch("snakemake_report_plugin_nanopub_graph.urlopen") as mock_urlopen:
         mock_urlopen.return_value.__enter__.return_value = mock_response
         mock_urlopen.return_value.__exit__.return_value = False
-        result = cli.deduce_description("https://w3id.org/np/RAtest", logger, "Test Node")
+        result = cli.deduce_description(
+            "https://w3id.org/np/RAtest", logger, "Test Node"
+        )
 
     assert "w3id.org" in result or "RAtest" in result
 
@@ -237,6 +260,8 @@ def test_deduce_description_with_matching_triple():
     with patch("snakemake_report_plugin_nanopub_graph.urlopen") as mock_urlopen:
         mock_urlopen.return_value.__enter__.return_value = mock_response
         mock_urlopen.return_value.__exit__.return_value = False
-        result = cli.deduce_description("https://w3id.org/np/RAtest", logger, "Test Node")
+        result = cli.deduce_description(
+            "https://w3id.org/np/RAtest", logger, "Test Node"
+        )
 
     assert "My workflow description" in result
