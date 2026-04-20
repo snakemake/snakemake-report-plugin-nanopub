@@ -203,7 +203,7 @@ def test_deduce_description_network_failure():
 
 
 def test_deduce_description_graph_parse_fails():
-    """When urlopen succeeds but the data is unparseable, the fallback is returned."""
+    """When urlopen succeeds but the data is unparsable, the fallback is returned."""
     from unittest.mock import patch, MagicMock
 
     mock_response = MagicMock()
