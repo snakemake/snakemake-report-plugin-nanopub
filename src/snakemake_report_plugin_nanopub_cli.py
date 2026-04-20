@@ -28,7 +28,10 @@ PREDICATES = [
     "http://schema.org/name",
     "http://www.w3.org/2000/01/rdf-schema#comment",
 ]
-NP_DISPLAY_PREFIX = "https://w3id.org/np/"
+NP_DISPLAY_PREFIXES = (
+    "https://w3id.org/np/",
+    "http://w3id.org/np/",
+)
 LOGGER_NAME = "snakemake_report_plugin_nanopub.cli"
 
 
@@ -90,6 +93,13 @@ def _artifact_code_from_nanopub_id(nanopub_id: str) -> str:
     return parsed.path.rstrip("/").split("/")[-1]
 
 
+def _strip_display_prefix(nanopub_id: str) -> str:
+    for prefix in NP_DISPLAY_PREFIXES:
+        if nanopub_id.startswith(prefix):
+            return nanopub_id[len(prefix) :]
+    return nanopub_id
+
+
 def _parse_nanopub_graph(data: str, content_type: str, logger: logging.Logger):
     try:
         rdflib = importlib.import_module("rdflib")
@@ -144,7 +154,9 @@ def deduce_description(
     logger.debug("[%s] Resolving description for nanopub: %s", node_title, nanopub_id)
     logger.debug("[%s] URL-based fallback description: %s", node_title, fallback)
     fetch_candidates = [nanopub_id]
-    if nanopub_id.startswith(NP_DISPLAY_PREFIX) and not nanopub_id.endswith(".trig"):
+    if nanopub_id.startswith("https://w3id.org/np/") and not nanopub_id.endswith(
+        ".trig"
+    ):
         fetch_candidates.append(f"{nanopub_id}.trig")
 
     graph = None
@@ -244,14 +256,13 @@ def _node_label(
     description: str,
     nanopub_id: str,
     text_width: int,
+    include_description: bool = True,
 ) -> str:
-    display_id = nanopub_id
-    if display_id.startswith(NP_DISPLAY_PREFIX):
-        display_id = display_id[len(NP_DISPLAY_PREFIX) :]
+    display_id = _strip_display_prefix(nanopub_id)
     safe_id = _wrap_for_html(display_id, width=text_width)
 
     description_row = ""
-    if description and description.strip():
+    if include_description and description and description.strip():
         safe_description = _wrap_for_html(description, width=text_width)
         description_row = f'<TR><TD ALIGN="LEFT">{safe_description}</TD></TR>'
 
@@ -313,6 +324,7 @@ def build_dot(
         workflow_configuration_description,
         workflow_configuration_id,
         text_width=text_width,
+        include_description=False,
     )
     report_label = _node_label(
         "Workflow Report",
@@ -327,7 +339,7 @@ def build_dot(
         rankdir=TB;
     graph [bgcolor=\"white\"];
         node [shape=box, style=\"rounded\", color=\"{graphviz_color}\", penwidth=1.6, fontname=\"Helvetica\", fixedsize=false, margin=\"0.12,0.08\"];
-        edge [color=\"{graphviz_color}\", fontcolor=\"{edge_label_color}\", penwidth=1.6, fontname=\"Helvetica\"];
+        edge [color=\"{graphviz_color}\", fontcolor=\"{edge_label_color}\", penwidth=1.6, fontname=\"Helvetica\", labelfloat=true];
 
   dataset [label={dataset_label}];
   workflow [label={workflow_label}];
@@ -337,10 +349,10 @@ def build_dot(
         {{ rank=same; workflow; report; }}
         {{ rank=same; dataset; workflow_configuration; }}
 
-  dataset -> workflow [label=\"used by\"];
-    workflow_configuration -> workflow [label="used this configuration"];
+    dataset -> workflow [label=\"   used by\"];
+        workflow_configuration -> workflow [label="   used this configuration"];
   workflow -> report [label=\"produces\"];
-    report -> dataset [label=\"based upon\"];
+        report -> dataset [label=\"   based upon\"];
 }}
 """
     return dot
