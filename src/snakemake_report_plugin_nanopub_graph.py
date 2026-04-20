@@ -103,7 +103,7 @@ def _parse_nanopub_graph(data: str, content_type: str, logger: logging.Logger):
         rdflib = importlib.import_module("rdflib")
     except Exception:
         return None
-    ConjunctiveGraph = rdflib.ConjunctiveGraph
+    Dataset = rdflib.Dataset
 
     formats = []
     lowered = (content_type or "").lower()
@@ -120,7 +120,7 @@ def _parse_nanopub_graph(data: str, content_type: str, logger: logging.Logger):
 
     formats.extend(["trig", "nquads", "turtle", "xml", "json-ld"])
 
-    graph = ConjunctiveGraph()
+    graph = Dataset()
     seen = set()
     for fmt in formats:
         if fmt in seen:
