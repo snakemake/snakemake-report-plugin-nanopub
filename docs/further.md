@@ -6,7 +6,7 @@ The idea is to allow using linking all metadata of a workflow into a Material & 
 
 ### Installation
 
-Installing this plugin into your Snakemake base environment using pip or conda will ensure dependency resoltion for `nanopub-py` library as well.
+Installing this plugin into your Snakemake base environment using pip or conda will ensure dependency resolution for `nanopub-py` library as well.
 
 #### Setup
 
@@ -47,7 +47,7 @@ Nanopub published successfully: ('https://w3id.org/np/<nanopub ID>', 'https://te
 Report created.
 ```
 
-You can navigate to the test registry and check your nanopub. If you want to register with main server put `--report-nanopub-main-server`. This is a security measure to avoid registering too many undesired nanopubs (e.g. accidentially for ill-configured runs).
+You can navigate to the test registry and check your nanopub. If you want to register with main server put `--report-nanopub-main-server`. This is a security measure to avoid registering too many undesired nanopubs (e.g. accidentally for ill-configured runs).
 
 Optional parameters are:
 
@@ -60,7 +60,7 @@ The plugin offers a stand-alone command line tool, too: `plot-nanopub-knowledge-
 
 When you run it, you get a graphical representation of your workflow its in- and outputs like this:
 
-![Small knowlegde graph of a workflow, its dataset, report and configuration.](images/example_knowledgegraph.png)
+![Small knowledge graph of a workflow, its dataset, report and configuration.](images/example_knowledgegraph.png)
 
 In order to accomplish this, an uploaded report HTML (generated with Snakemake's `--report` flag) can be registered with [this template](https://w3id.org/np/RAsmNjwvzjYfc8Hson0gyjSL6Oov3nZZEfRy7TOFtO5I8). 
 
