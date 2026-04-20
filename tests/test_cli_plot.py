@@ -1,7 +1,5 @@
 import logging
 
-import pytest
-
 import snakemake_report_plugin_nanopub_graph as cli
 
 
