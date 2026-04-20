@@ -6,11 +6,12 @@ from unittest.mock import Mock, MagicMock, patch
 import datetime
 
 import pytest
-from rdflib import Literal, URIRef
+from rdflib import Literal, RDF, URIRef
 
 from snakemake_report_plugin_nanopub import (
     Reporter,
     ReportSettings,
+    NANOPUB_SNK,
     NPX,
 )
 
@@ -285,6 +286,15 @@ class TestReporterPlainText:
         assert "hello" in result
         assert "world" in result
 
+    def test_plain_text_html_link_to_bracketed_url(self):
+        """Test plain_text rewrites HTML anchors as plain text with [URL]."""
+        reporter = DummyReporter()
+        result = reporter.plain_text(
+            '<a class="reference external" href="https://example.com">example</a>'
+        )
+        assert "<a" not in result
+        assert "example [https://example.com]" in result
+
     def test_plain_text_with_drop_links(self):
         """Test plain_text with drop_links option."""
         reporter = DummyReporter()
@@ -376,12 +386,29 @@ class TestReporterBuildNanopub:
 
         reporter = DummyReporter()
         payload = {
-            "workflow": {"description": "Test workflow", "config": "test: value"},
+            "workflow": {
+                "description": (
+                    '<div>Test <a href="https://example.com">workflow</a></div>'
+                ),
+                "config": "test: value",
+            },
             "jobs_full": [],
             "rules_full": [],
         }
 
         reporter.build_nanopub(payload)
+
+        description_literals = [
+            call_args[0][0][2]
+            for call_args in mock_np.assertion.add.call_args_list
+            if len(call_args[0]) == 1
+            and len(call_args[0][0]) == 3
+            and call_args[0][0][1] == NANOPUB_SNK.description
+        ]
+        assert len(description_literals) == 1
+        rendered_description = str(description_literals[0])
+        assert "<a" not in rendered_description
+        assert "workflow [https://example.com]" in rendered_description
 
         # Verify nanopub was created
         assert mock_nanopub_class.called
@@ -480,6 +507,66 @@ class TestReporterBuildNanopub:
 
         # Check that rules were processed
         assert mock_np.assertion.add.called
+
+    @patch("snakemake_report_plugin_nanopub.load_profile")
+    @patch("snakemake_report_plugin_nanopub.Nanopub")
+    def test_build_nanopub_with_jobs(self, mock_nanopub_class, mock_load_profile):
+        """Test build_nanopub serializes jobs as explicit job nodes."""
+        mock_profile = Mock()
+        mock_profile.orcid_id = None
+        mock_load_profile.return_value = mock_profile
+
+        mock_np = Mock()
+        mock_np._metadata = Mock()
+        mock_ns_dict = {}
+
+        def namespace_getitem(key):
+            if key not in mock_ns_dict:
+                mock_ns_dict[key] = f"http://purl.org/nanopub/temp/{key}"
+            return mock_ns_dict[key]
+
+        mock_namespace = MagicMock()
+        mock_namespace.__getitem__ = Mock(side_effect=namespace_getitem)
+        mock_np._metadata.namespace = mock_namespace
+        mock_np._metadata.np_uri = "http://purl.org/nanopub/temp/np"
+        mock_np.pubinfo = Mock()
+        mock_np.pubinfo.add = Mock()
+        mock_np.assertion = Mock()
+        mock_np.assertion.add = Mock()
+        mock_nanopub_class.return_value = mock_np
+
+        reporter = DummyReporter()
+        payload = {
+            "workflow": {},
+            "jobs_full": [
+                {
+                    "rule": "count_reads",
+                    "output": ["counts/sample1.tsv"],
+                }
+            ],
+            "rules_full": [],
+        }
+
+        reporter.build_nanopub(payload)
+
+        assertion_triples = [
+            call_args[0][0]
+            for call_args in mock_np.assertion.add.call_args_list
+            if len(call_args[0]) == 1 and len(call_args[0][0]) == 3
+        ]
+
+        assert any(
+            t[1] == RDF.type and t[2] == NANOPUB_SNK.WorkflowJob
+            for t in assertion_triples
+        )
+        assert any(
+            t[1] == NANOPUB_SNK.ruleName and str(t[2]) == "count_reads"
+            for t in assertion_triples
+        )
+        assert any(
+            t[1] == NANOPUB_SNK.hasOutput and str(t[2]) == "counts/sample1.tsv"
+            for t in assertion_triples
+        )
 
     def test_post_init_sets_attributes(self):
         """Test __post_init__ sets required attributes."""
