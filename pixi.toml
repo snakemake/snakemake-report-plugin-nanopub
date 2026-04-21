@@ -5,15 +5,14 @@ channels = ["conda-forge"]
 platforms = ["linux-64", "osx-arm64"]
 
 [dependencies]
-python = ">=3.11,<4"
+python = ">=3.12,<4"
 ruff = ">=0.10.0,<0.11"
 pytest = ">=8.3.5,<9"
 pytest-cov = ">=6.0.0,<7"
 rdflib = ">=7.0.0"
-nanopub = ">=2.2.0"
 
 [pypi-dependencies]
-nanopub = ">=2.0.1"
+nanopub = ">=2.2.0"
 snakemake = ">=8.0.0"
 snakemake-interface-common = ">=1.17.4,<2.0.0"
 snakemake-interface-report-plugins = ">=1.1.0,<2.0.0"
