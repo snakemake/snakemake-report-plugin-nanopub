@@ -6,11 +6,11 @@ authors = [
 ]
 description = "Reporter plugin for Snakemake using nanopub-py to create workflow metadata nanopubs"
 readme = "README.md"
-requires-python = ">=3.11,<4.0"
+requires-python = ">=3.12,<4.0"
 dependencies = [
     "snakemake-interface-common (>=1.17.4,<2.0.0)", 
     "snakemake-interface-report-plugins (>=1.1.0,<2.0.0)",
-    "nanopub (>=2.0.1)"
+    "nanopub (>=2.2.0)"
 ]
 
 [project.scripts]
