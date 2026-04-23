@@ -56,7 +56,7 @@ def extract_rules_full(rules, jsonable):
 
         workflow_rules.append(
             {
-                # outcommented: no interesting for nanopubs in the first place
+                # commented out: not interesting for nanopubs in the first place
                 "name": rule.name,
                 "docstring": rule.docstring,
                 "input": jsonable(list(rule.input)),
