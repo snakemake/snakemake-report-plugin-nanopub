@@ -99,6 +99,7 @@ def test_extract_rules_full_extracts_wrapper_version(jsonable):
     assert rule["name"] == "align"
     assert rule["wrapper"] == "0.99.0/bio/bwa/mem"
     assert rule["wrapper_version"] == "0.99.0"
+    assert rule["threads"] == 8
 
 
 def test_extract_workflow_inputs_collects_declared_and_dag_inputs():
@@ -218,43 +219,3 @@ def test_extract_everything_handles_optional_html_derived_failure(
         for warning in logger.warnings
     )
     assert any("traceback" in debug for debug in logger.debugs)
-
-
-def _make_minimal_extract_everything_kwargs(monkeypatch, tmp_path, jsonable):
-    """Return minimal kwargs for extract_everything that won't error on imports."""
-    logger = DummyLogger()
-    rules = []
-    dag = SimpleNamespace(
-        jobs=[],
-        workflow=SimpleNamespace(
-            configfiles=[],
-            config={},
-            rules=rules,
-        ),
-    )
-
-    monkeypatch.setattr(
-        extraction,
-        "rulegraph_spec",
-        lambda dag_arg: ({"nodes": [], "links": [], "links_direct": []}, None, None),
-    )
-
-    fake_html = SimpleNamespace(
-        render_categories=lambda results: "[]",
-        render_results=lambda results, mode_embedded=True: "[]",
-        render_rules=lambda rules_arg: "[]",
-        get_packages=lambda: SimpleNamespace(get_json=lambda: "{}"),
-        render_metadata=lambda metadata: "{}",
-    )
-    monkeypatch.setattr(extraction, "html_data", fake_html)
-
-    return {
-        "rules": rules,
-        "results": [],
-        "metadata": {},
-        "dag": dag,
-        "workflow_description": "desc",
-        "generated_at": "2026-01-01T00:00:00",
-        "jsonable": jsonable,
-        "logger": logger,
-    }
