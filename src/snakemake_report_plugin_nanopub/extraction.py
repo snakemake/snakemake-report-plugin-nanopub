@@ -123,22 +123,22 @@ def extract_everything(
         and getattr(rec, "starttime", None) is not None
     ]
 
-    def ts_iso(ts):
-        if ts is None:
-            return None
-        try:
-            return datetime.datetime.fromtimestamp(ts).isoformat()
-        except OSError:
-            return None
-
-    timeline_raw = [
-        {
-            "rule": rec.rule,
-            "starttime": ts_iso(getattr(rec, "starttime", None)),
-            "endtime": ts_iso(getattr(rec, "endtime", None)),
-        }
-        for rec in jobs
-    ]
+    # def ts_iso(ts):
+    #     if ts is None:
+    #         return None
+    #     try:
+    #         return datetime.datetime.fromtimestamp(ts).isoformat()
+    #     except OSError:
+    #         return None
+    #
+    # timeline_raw = [
+    #     {
+    #         "rule": rec.rule,
+    #         "starttime": ts_iso(getattr(rec, "starttime", None)),
+    #         "endtime": ts_iso(getattr(rec, "endtime", None)),
+    #     }
+    #     for rec in jobs
+    # ]
 
     html_reporter_derived = {}
     try:
@@ -155,7 +155,7 @@ def extract_everything(
             },
             "rules": json.loads(html_data.render_rules(rules)),
             "runtimes": runtimes_raw,
-            "timeline": timeline_raw,
+            #"timeline": timeline_raw,
             "packages": json.loads(html_data.get_packages().get_json()),
             "metadata": json.loads(html_data.render_metadata(metadata)),
         }

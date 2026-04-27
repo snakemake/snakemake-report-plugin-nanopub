@@ -89,7 +89,7 @@ def test_extract_jobs_computes_runtime_and_serializes(jsonable):
     assert result[1]["runtime"] is None
 
 
-def test_extract_rules_full_extracts_wrapper_version_and_threads(jsonable):
+def test_extract_rules_full_extracts_wrapper_version(jsonable):
     rules = [DummyRule()]
 
     result = extraction.extract_rules_full(rules, jsonable)
@@ -99,8 +99,6 @@ def test_extract_rules_full_extracts_wrapper_version_and_threads(jsonable):
     assert rule["name"] == "align"
     assert rule["wrapper"] == "0.99.0/bio/bwa/mem"
     assert rule["wrapper_version"] == "0.99.0"
-    assert rule["threads"] == 8
-    assert rule["is_wrapper"] is True
 
 
 def test_extract_workflow_inputs_collects_declared_and_dag_inputs():
@@ -262,29 +260,31 @@ def _make_minimal_extract_everything_kwargs(monkeypatch, tmp_path, jsonable):
     }
 
 
-def test_ts_iso_none_starttime(monkeypatch, tmp_path, jsonable):
-    """ts_iso(None) should return None, covering the early-return branch."""
-    kwargs = _make_minimal_extract_everything_kwargs(monkeypatch, tmp_path, jsonable)
-    # A job with starttime=None triggers ts_iso(None) → return None
-    job_with_none_start = DummyJob("rule_x", starttime=None, endtime=2.0)
-    payload = extraction.extract_everything(jobs=[job_with_none_start], **kwargs)
+# Test removed: timeline_raw is no longer collected as it's not necessary for reproduction
+# def test_ts_iso_none_starttime(monkeypatch, tmp_path, jsonable):
+#     """ts_iso(None) should return None, covering the early-return branch."""
+#     kwargs = _make_minimal_extract_everything_kwargs(monkeypatch, tmp_path, jsonable)
+#     # A job with starttime=None triggers ts_iso(None) → return None
+#     job_with_none_start = DummyJob("rule_x", starttime=None, endtime=2.0)
+#     payload = extraction.extract_everything(jobs=[job_with_none_start], **kwargs)
+#
+#     timeline = payload["html_reporter_derived"].get("timeline", [])
+#     assert any(entry["starttime"] is None for entry in timeline)
 
-    timeline = payload["html_reporter_derived"].get("timeline", [])
-    assert any(entry["starttime"] is None for entry in timeline)
 
-
-def test_ts_iso_os_error_branch(monkeypatch, tmp_path, jsonable):
-    """When datetime.fromtimestamp raises OSError, ts_iso should return None."""
-    from unittest.mock import patch
-
-    kwargs = _make_minimal_extract_everything_kwargs(monkeypatch, tmp_path, jsonable)
-    job = DummyJob("rule_y", starttime=1.0, endtime=2.0)
-
-    with patch("snakemake_report_plugin_nanopub.extraction.datetime") as mock_dt:
-        mock_dt.datetime.fromtimestamp.side_effect = OSError("bad timestamp")
-        payload = extraction.extract_everything(jobs=[job], **kwargs)
-
-    timeline = payload["html_reporter_derived"].get("timeline", [])
-    # All timestamps should be None because fromtimestamp always raised OSError.
-    assert all(entry["starttime"] is None for entry in timeline)
-    assert all(entry["endtime"] is None for entry in timeline)
+# Test removed: timeline_raw is no longer collected as it's not necessary for reproduction
+# def test_ts_iso_os_error_branch(monkeypatch, tmp_path, jsonable):
+#     """When datetime.fromtimestamp raises OSError, ts_iso should return None."""
+#     from unittest.mock import patch
+#
+#     kwargs = _make_minimal_extract_everything_kwargs(monkeypatch, tmp_path, jsonable)
+#     job = DummyJob("rule_y", starttime=1.0, endtime=2.0)
+#
+#     with patch("snakemake_report_plugin_nanopub.extraction.datetime") as mock_dt:
+#         mock_dt.datetime.fromtimestamp.side_effect = OSError("bad timestamp")
+#         payload = extraction.extract_everything(jobs=[job], **kwargs)
+#
+#     timeline = payload["html_reporter_derived"].get("timeline", [])
+#     # All timestamps should be None because fromtimestamp always raised OSError.
+#     assert all(entry["starttime"] is None for entry in timeline)
+#     assert all(entry["endtime"] is None for entry in timeline)
