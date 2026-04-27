@@ -63,10 +63,9 @@ def extract_rules_full(rules, jsonable):
                 "params": jsonable(list(rule.params)),
                 # "log": jsonable(list(rule.log)),
                 # "benchmark": jsonable(rule.benchmark),
-                # threads will be stored in benchmarking repos
-                # "threads": jsonable(
-                #    rule.resources.get("_cores") if rule.resources else None
-                # ),
+                "threads": jsonable(
+                    rule.resources.get("_cores") if rule.resources else None
+                ),
                 "resources": jsonable(rule.resources),
                 "conda_env": jsonable(rule.conda_env),
                 "container_img": jsonable(rule.container_img),
