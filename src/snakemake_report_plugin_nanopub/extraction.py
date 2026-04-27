@@ -1,4 +1,3 @@
-import datetime
 import json
 from pathlib import Path
 
@@ -56,13 +55,14 @@ def extract_rules_full(rules, jsonable):
 
         workflow_rules.append(
             {
+                # commented out: not interesting for nanopubs in the first place
                 "name": rule.name,
                 "docstring": rule.docstring,
                 "input": jsonable(list(rule.input)),
                 "output": jsonable(list(rule.output)),
                 "params": jsonable(list(rule.params)),
-                "log": jsonable(list(rule.log)),
-                "benchmark": jsonable(rule.benchmark),
+                # "log": jsonable(list(rule.log)),
+                # "benchmark": jsonable(rule.benchmark),
                 "threads": jsonable(
                     rule.resources.get("_cores") if rule.resources else None
                 ),
@@ -75,11 +75,13 @@ def extract_rules_full(rules, jsonable):
                 "script": jsonable(rule.script),
                 "notebook": jsonable(rule.notebook),
                 "shellcmd": jsonable(rule.shellcmd),
-                "is_run": rule.is_run,
-                "is_shell": rule.is_shell,
-                "is_script": rule.is_script,
-                "is_wrapper": rule.is_wrapper,
-                "is_notebook": rule.is_notebook,
+                # not interesting, because part of the published workflow
+                # and persistent, whereas software versions may change
+                # "is_run": rule.is_run,
+                # "is_shell": rule.is_shell,
+                # "is_script": rule.is_script,
+                # "is_wrapper": rule.is_wrapper,
+                # "is_notebook": rule.is_notebook,
             }
         )
     return workflow_rules
@@ -119,22 +121,22 @@ def extract_everything(
         and getattr(rec, "starttime", None) is not None
     ]
 
-    def ts_iso(ts):
-        if ts is None:
-            return None
-        try:
-            return datetime.datetime.fromtimestamp(ts).isoformat()
-        except OSError:
-            return None
-
-    timeline_raw = [
-        {
-            "rule": rec.rule,
-            "starttime": ts_iso(getattr(rec, "starttime", None)),
-            "endtime": ts_iso(getattr(rec, "endtime", None)),
-        }
-        for rec in jobs
-    ]
+    # def ts_iso(ts):
+    #     if ts is None:
+    #         return None
+    #     try:
+    #         return datetime.datetime.fromtimestamp(ts).isoformat()
+    #     except OSError:
+    #         return None
+    #
+    # timeline_raw = [
+    #     {
+    #         "rule": rec.rule,
+    #         "starttime": ts_iso(getattr(rec, "starttime", None)),
+    #         "endtime": ts_iso(getattr(rec, "endtime", None)),
+    #     }
+    #     for rec in jobs
+    # ]
 
     html_reporter_derived = {}
     try:
@@ -151,7 +153,7 @@ def extract_everything(
             },
             "rules": json.loads(html_data.render_rules(rules)),
             "runtimes": runtimes_raw,
-            "timeline": timeline_raw,
+            # "timeline": timeline_raw,
             "packages": json.loads(html_data.get_packages().get_json()),
             "metadata": json.loads(html_data.render_metadata(metadata)),
         }
