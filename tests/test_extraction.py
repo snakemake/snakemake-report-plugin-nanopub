@@ -100,6 +100,7 @@ def test_extract_rules_full_extracts_wrapper_version(jsonable):
     assert rule["wrapper"] == "0.99.0/bio/bwa/mem"
     assert rule["wrapper_version"] == "0.99.0"
     assert rule["threads"] == 8
+    assert rule["is_wrapper"] is True
 
 
 def test_extract_workflow_inputs_collects_declared_and_dag_inputs():

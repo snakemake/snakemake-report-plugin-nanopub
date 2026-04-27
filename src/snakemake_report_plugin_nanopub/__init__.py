@@ -31,7 +31,7 @@ class ReportSettings(ReportSettingsBase):
     workflow_id: str = field(
         default=None,
         metadata={
-            "help": "NanoPub ID of a workflow for which this report"
+            "help": "NanoPub ID of a workflow for which this report "
             "this metadata NanoPub should be published.",
             "env_var": False,
             "required": True,
@@ -56,7 +56,7 @@ class ReportSettings(ReportSettingsBase):
     dry_run: bool = field(
         default=False,
         metadata={
-            "help": "Perform a dry run (do not publish the nanopub, just generate"
+            "help": "Perform a dry run (do not publish the nanopub, just generate "
             "and print the nanopub content).",
             "env_var": False,
             "required": False,

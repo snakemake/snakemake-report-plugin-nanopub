@@ -75,13 +75,11 @@ def extract_rules_full(rules, jsonable):
                 "script": jsonable(rule.script),
                 "notebook": jsonable(rule.notebook),
                 "shellcmd": jsonable(rule.shellcmd),
-                # not interesting, because part of the published workflow
-                # and persistent, whereas software versions may change
-                # "is_run": rule.is_run,
-                # "is_shell": rule.is_shell,
-                # "is_script": rule.is_script,
-                # "is_wrapper": rule.is_wrapper,
-                # "is_notebook": rule.is_notebook,
+                "is_run": rule.is_run,
+                "is_shell": rule.is_shell,
+                "is_script": rule.is_script,
+                "is_wrapper": rule.is_wrapper,
+                "is_notebook": rule.is_notebook,
             }
         )
     return workflow_rules
