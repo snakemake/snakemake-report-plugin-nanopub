@@ -258,4 +258,3 @@ def _make_minimal_extract_everything_kwargs(monkeypatch, tmp_path, jsonable):
         "jsonable": jsonable,
         "logger": logger,
     }
-
