@@ -1,4 +1,3 @@
-import datetime
 import json
 from pathlib import Path
 
@@ -62,12 +61,12 @@ def extract_rules_full(rules, jsonable):
                 "input": jsonable(list(rule.input)),
                 "output": jsonable(list(rule.output)),
                 "params": jsonable(list(rule.params)),
-                #"log": jsonable(list(rule.log)),
-                #"benchmark": jsonable(rule.benchmark),
+                # "log": jsonable(list(rule.log)),
+                # "benchmark": jsonable(rule.benchmark),
                 # threads will be stored in benchmarking repos
-                #"threads": jsonable(
+                # "threads": jsonable(
                 #    rule.resources.get("_cores") if rule.resources else None
-                #),
+                # ),
                 "resources": jsonable(rule.resources),
                 "conda_env": jsonable(rule.conda_env),
                 "container_img": jsonable(rule.container_img),
@@ -79,11 +78,11 @@ def extract_rules_full(rules, jsonable):
                 "shellcmd": jsonable(rule.shellcmd),
                 # not interesting, because part of the published workflow
                 # and persistent, whereas software versions may change
-                #"is_run": rule.is_run,
-                #"is_shell": rule.is_shell,
-                #"is_script": rule.is_script,
-                #"is_wrapper": rule.is_wrapper,
-                #"is_notebook": rule.is_notebook,
+                # "is_run": rule.is_run,
+                # "is_shell": rule.is_shell,
+                # "is_script": rule.is_script,
+                # "is_wrapper": rule.is_wrapper,
+                # "is_notebook": rule.is_notebook,
             }
         )
     return workflow_rules
@@ -155,7 +154,7 @@ def extract_everything(
             },
             "rules": json.loads(html_data.render_rules(rules)),
             "runtimes": runtimes_raw,
-            #"timeline": timeline_raw,
+            # "timeline": timeline_raw,
             "packages": json.loads(html_data.get_packages().get_json()),
             "metadata": json.loads(html_data.render_metadata(metadata)),
         }
