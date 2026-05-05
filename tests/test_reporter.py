@@ -7,6 +7,7 @@ import datetime
 
 import pytest
 from rdflib import Literal, RDF, URIRef
+from rdflib.namespace import RDFS
 
 from snakemake_report_plugin_nanopub import (
     Reporter,
@@ -44,6 +45,7 @@ class TestReportSettings:
         assert settings.output_path == path
         assert settings.main_server is True
         assert settings.dry_run is True
+        assert settings.disable_filtering is False
 
 
 class MockMetadata:
@@ -386,6 +388,7 @@ class TestReporterBuildNanopub:
         mock_np._metadata.namespace = {
             "dataset": "http://purl.org/nanopub/temp/dataset",
             "workflow-configuration": "http://purl.org/nanopub/temp/workflow-config",
+            "workflow-rules": "http://purl.org/nanopub/temp/workflow-rules",
         }
         mock_np._metadata.np_uri = "http://purl.org/nanopub/temp/np"
         mock_np.pubinfo = Mock()
@@ -440,6 +443,7 @@ class TestReporterBuildNanopub:
         mock_np._metadata.namespace = {
             "dataset": "http://purl.org/nanopub/temp/dataset",
             "workflow-configuration": "http://purl.org/nanopub/temp/workflow-config",
+            "workflow-rules": "http://purl.org/nanopub/temp/workflow-rules",
         }
         mock_np._metadata.np_uri = "http://purl.org/nanopub/temp/np"
         mock_np.pubinfo = Mock()
@@ -505,10 +509,10 @@ class TestReporterBuildNanopub:
             "rules_full": [
                 {
                     "name": "test_rule",
-                    "wrapper": "bio/bwa/mem",
+                    "conda_env": "envs/test.yaml",
+                    "wrapper_version": "v1.0.0",
                     "input": ["in.txt"],
                     "output": ["out.txt"],
-                    "params": ["--param1"],
                 }
             ],
         }
@@ -643,10 +647,10 @@ class TestBuildNanopubExtraPaths:
 
     @patch("snakemake_report_plugin_nanopub.load_profile")
     @patch("snakemake_report_plugin_nanopub.Nanopub")
-    def test_build_nanopub_shell_rule_adds_shell_label(
+    def test_build_nanopub_rule_software_labels_use_conda_env_and_wrapper_version(
         self, mock_nanopub_class, mock_load_profile
     ):
-        """A rule that is_shell and has a shellcmd gets 'shell' as software label."""
+        """Rule software labels only use conda_env and wrapper_version."""
         mock_np = _make_mock_np(mock_nanopub_class, mock_load_profile)
 
         reporter = DummyReporter()
@@ -655,10 +659,9 @@ class TestBuildNanopubExtraPaths:
             "jobs_full": [],
             "rules_full": [
                 {
-                    "name": "shell_rule",
-                    "is_shell": True,
-                    "shellcmd": "echo hello",
-                    # No wrapper/script/notebook/conda_env/container_img
+                    "name": "align",
+                    "conda_env": "envs/align.yaml",
+                    "wrapper_version": "v4.4.0",
                 }
             ],
         }
@@ -672,14 +675,14 @@ class TestBuildNanopubExtraPaths:
             and len(call_args[0][0]) == 3
             and call_args[0][0][1] == NANOPUB_SNK.hasSoftwarePackage
         ]
-        assert "shell" in software_literals
+        assert sorted(software_literals) == ["envs/align.yaml", "v4.4.0"]
 
     @patch("snakemake_report_plugin_nanopub.load_profile")
     @patch("snakemake_report_plugin_nanopub.Nanopub")
-    def test_build_nanopub_no_software_label_falls_back_to_rule_name(
+    def test_build_nanopub_groups_rules_under_rule_section(
         self, mock_nanopub_class, mock_load_profile
     ):
-        """A rule with no identifiable software label falls back to the rule name."""
+        """Rules are linked from a rule section and do not emit redundant name/type triples."""
         mock_np = _make_mock_np(mock_nanopub_class, mock_load_profile)
 
         reporter = DummyReporter()
@@ -688,23 +691,79 @@ class TestBuildNanopubExtraPaths:
             "jobs_full": [],
             "rules_full": [
                 {
-                    "name": "plain_rule",
-                    "is_shell": False,
-                    # None of wrapper/script/notebook/conda_env/container_img set
+                    "name": "alignment_qa",
+                    "wrapper": "v4.4.0/bio/qualimap/bamqc",
+                    "output": ["QC/qualimap/{sample}"],
                 }
             ],
         }
 
         reporter.build_nanopub(payload)
 
-        software_literals = [
-            str(call_args[0][0][2])
+        assertion_triples = [
+            call_args[0][0]
             for call_args in mock_np.assertion.add.call_args_list
-            if len(call_args[0]) == 1
-            and len(call_args[0][0]) == 3
-            and call_args[0][0][1] == NANOPUB_SNK.hasSoftwarePackage
+            if len(call_args[0]) == 1 and len(call_args[0][0]) == 3
         ]
-        assert "plain_rule" in software_literals
+
+        rule_section_links = [
+            triple
+            for triple in assertion_triples
+            if triple[1] == NANOPUB_SNK.hasWorkflowRule
+        ]
+        assert len(rule_section_links) == 1
+        assert str(rule_section_links[0][2]).endswith("rule-alignment_qa")
+        assert any(
+            triple[1] == NANOPUB_SNK.hasRuleSection for triple in assertion_triples
+        )
+        assert any(
+            triple[1] == RDFS.label and str(triple[2]) == "workflow rules"
+            for triple in assertion_triples
+        )
+        assert not any(
+            triple[1] == RDF.type and triple[2] == NANOPUB_SNK.WorkflowRule
+            for triple in assertion_triples
+        )
+        assert not any(
+            triple[1] == NANOPUB_SNK.ruleName for triple in assertion_triples
+        )
+
+    @patch("snakemake_report_plugin_nanopub.load_profile")
+    @patch("snakemake_report_plugin_nanopub.Nanopub")
+    def test_build_nanopub_rules_emit_declared_input_and_output(
+        self, mock_nanopub_class, mock_load_profile
+    ):
+        """Rules emit declared input/output paths as hasInput/hasOutput triples."""
+        mock_np = _make_mock_np(mock_nanopub_class, mock_load_profile)
+
+        reporter = DummyReporter()
+        payload = {
+            "workflow": {},
+            "jobs_full": [],
+            "rules_full": [
+                {
+                    "name": "align",
+                    "input": ["reads.fastq"],
+                    "output": ["aligned.bam"],
+                }
+            ],
+        }
+
+        reporter.build_nanopub(payload)
+
+        assertion_triples = [
+            call_args[0][0]
+            for call_args in mock_np.assertion.add.call_args_list
+            if len(call_args[0]) == 1 and len(call_args[0][0]) == 3
+        ]
+        assert any(
+            t[1] == NANOPUB_SNK.hasInput and str(t[2]) == "reads.fastq"
+            for t in assertion_triples
+        )
+        assert any(
+            t[1] == NANOPUB_SNK.hasOutput and str(t[2]) == "aligned.bam"
+            for t in assertion_triples
+        )
 
     @patch("snakemake_report_plugin_nanopub.load_profile")
     @patch("snakemake_report_plugin_nanopub.Nanopub")
@@ -733,3 +792,118 @@ class TestBuildNanopubExtraPaths:
         ]
         # No ruleName triple for "all".
         assert not any("all" in str(c) for c in rule_type_calls)
+
+
+class FakeRDF:
+    def __init__(self, quad_count, serialized=""):
+        self.quad_count = quad_count
+        self.serialized = serialized
+
+    def __len__(self):
+        return self.quad_count
+
+    def serialize(self, format="trig"):
+        return self.serialized
+
+
+class FakeNanopub:
+    def __init__(self, quad_count, serialized=""):
+        self.rdf = FakeRDF(quad_count, serialized)
+        self.sign = Mock()
+        self.is_valid = True
+
+
+class TestPublishReadyNanopub:
+    def test_build_publish_ready_nanopub_skips_filtering_when_disabled(self):
+        reporter = DummyReporter(
+            settings=ReportSettings(
+                workflow_id="test-workflow-id",
+                output_path=None,
+                main_server=False,
+                dry_run=False,
+                disable_filtering=True,
+            )
+        )
+        reporter.logger = Mock()
+
+        full_np = FakeNanopub(900)
+        reporter.build_nanopub = Mock(return_value=full_np)
+        payload = {"workflow": {}, "jobs_full": [{"rule": "a"}], "rules_full": []}
+
+        result = reporter.build_publish_ready_nanopub(payload)
+
+        assert result is full_np
+        reporter.build_nanopub.assert_called_once_with(payload)
+
+    def test_build_publish_ready_nanopub_drops_jobs_first(self):
+        reporter = DummyReporter()
+        reporter.logger = Mock()
+
+        full_payload = {
+            "workflow": {},
+            "jobs_full": [{"rule": "count_reads", "output": ["x.txt"]}],
+            "rules_full": [{"name": "count_reads", "output": ["x.txt"]}],
+        }
+        full_np = FakeNanopub(900)
+        jobs_compact_np = FakeNanopub(400)
+        reporter.build_nanopub = Mock(side_effect=[full_np, jobs_compact_np])
+
+        result = reporter.build_publish_ready_nanopub(full_payload)
+
+        assert result is jobs_compact_np
+        assert reporter.build_nanopub.call_count == 2
+        assert reporter.build_nanopub.call_args_list[1][0][0]["jobs_full"] == []
+        assert (
+            reporter.build_nanopub.call_args_list[1][0][0]["rules_full"]
+            == full_payload["rules_full"]
+        )
+
+    def test_build_publish_ready_nanopub_never_drops_rules(self):
+        reporter = DummyReporter()
+        reporter.logger = Mock()
+
+        full_payload = {
+            "workflow": {},
+            "jobs_full": [{"rule": "count_reads", "output": ["x.txt"]}],
+            "rules_full": [{"name": "count_reads", "output": ["x.txt"]}],
+        }
+        full_np = FakeNanopub(900)
+        jobs_compact_np = FakeNanopub(850)
+        reporter.build_nanopub = Mock(side_effect=[full_np, jobs_compact_np])
+
+        result = reporter.build_publish_ready_nanopub(full_payload)
+
+        assert result is jobs_compact_np
+        assert reporter.build_nanopub.call_count == 2
+        compact_payload = reporter.build_nanopub.call_args_list[1][0][0]
+        assert compact_payload["jobs_full"] == []
+        assert compact_payload["rules_full"] == full_payload["rules_full"]
+
+    @patch("snakemake_report_plugin_nanopub.bind_nanopub_prefixes")
+    @patch("snakemake_report_plugin_nanopub.extract_everything")
+    def test_render_dry_run_uses_publish_ready_nanopub(
+        self, mock_extract_everything, mock_bind_nanopub_prefixes
+    ):
+        reporter = DummyReporter(
+            settings=ReportSettings(
+                workflow_id="test-workflow-id",
+                output_path=None,
+                main_server=False,
+                dry_run=True,
+            )
+        )
+        reporter.logger = Mock()
+
+        payload = {"workflow": {}, "jobs_full": [], "rules_full": []}
+        dry_run_np = FakeNanopub(250, serialized="test trig")
+
+        mock_extract_everything.return_value = payload
+        reporter.build_publish_ready_nanopub = Mock(return_value=dry_run_np)
+        mock_bind_nanopub_prefixes.side_effect = lambda np: np
+
+        with pytest.raises(SystemExit) as exc:
+            reporter.render()
+
+        assert exc.value.code == 0
+        reporter.build_publish_ready_nanopub.assert_called_once_with(payload)
+        dry_run_np.sign.assert_called_once_with()

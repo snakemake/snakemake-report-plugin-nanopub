@@ -97,10 +97,18 @@ def test_extract_rules_full_extracts_wrapper_version(jsonable):
     assert len(result) == 1
     rule = result[0]
     assert rule["name"] == "align"
-    assert rule["wrapper"] == "0.99.0/bio/bwa/mem"
+    assert rule["conda_env"] == "envs/align.yaml"
+    assert rule["input"][0] == "reads.fastq"
+    assert callable(rule["input"][1])
+    assert rule["output"] == ["aligned.bam"]
     assert rule["wrapper_version"] == "0.99.0"
-    assert rule["threads"] == 8
-    assert rule["is_wrapper"] is True
+    assert set(rule.keys()) == {
+        "name",
+        "input",
+        "output",
+        "conda_env",
+        "wrapper_version",
+    }
 
 
 def test_extract_workflow_inputs_collects_declared_and_dag_inputs():

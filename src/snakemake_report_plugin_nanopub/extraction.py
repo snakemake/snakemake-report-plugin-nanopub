@@ -55,31 +55,30 @@ def extract_rules_full(rules, jsonable):
 
         workflow_rules.append(
             {
-                # commented out: not interesting for nanopubs in the first place
+                # Legacy rule metadata kept as reference only.
+                # Uncomment selectively if broader rule metadata is needed again.
+                # "docstring": rule.docstring,
+                # "params": jsonable(list(rule.params)),
+                # "threads": jsonable(
+                #     rule.resources.get("_cores") if rule.resources else None
+                # ),
+                # "resources": jsonable(rule.resources),
+                # "container_img": jsonable(rule.container_img),
+                # "env_modules": jsonable(rule.env_modules),
+                # "wrapper": jsonable(wrapper),
+                # "script": jsonable(rule.script),
+                # "notebook": jsonable(rule.notebook),
+                # "shellcmd": jsonable(rule.shellcmd),
+                # "is_run": rule.is_run,
+                # "is_shell": rule.is_shell,
+                # "is_script": rule.is_script,
+                # "is_wrapper": rule.is_wrapper,
+                # "is_notebook": rule.is_notebook,
                 "name": rule.name,
-                "docstring": rule.docstring,
                 "input": jsonable(list(rule.input)),
                 "output": jsonable(list(rule.output)),
-                "params": jsonable(list(rule.params)),
-                # "log": jsonable(list(rule.log)),
-                # "benchmark": jsonable(rule.benchmark),
-                "threads": jsonable(
-                    rule.resources.get("_cores") if rule.resources else None
-                ),
-                "resources": jsonable(rule.resources),
                 "conda_env": jsonable(rule.conda_env),
-                "container_img": jsonable(rule.container_img),
-                "env_modules": jsonable(rule.env_modules),
-                "wrapper": jsonable(wrapper),
                 "wrapper_version": wrapper_version,
-                "script": jsonable(rule.script),
-                "notebook": jsonable(rule.notebook),
-                "shellcmd": jsonable(rule.shellcmd),
-                "is_run": rule.is_run,
-                "is_shell": rule.is_shell,
-                "is_script": rule.is_script,
-                "is_wrapper": rule.is_wrapper,
-                "is_notebook": rule.is_notebook,
             }
         )
     return workflow_rules
