@@ -340,10 +340,17 @@ class Reporter(ReporterBase):
             )
 
             software_labels = set()
-            for key in ("conda_env", "wrapper_version"):
-                value = rule.get(key)
-                if value:
-                    software_labels.add(str(value))
+            wrapper_reference = rule.get("conda_env") or rule.get("wrapper")
+            if wrapper_reference and rule.get("wrapper"):
+                software_labels.add(str(wrapper_reference))
+            else:
+                for dependency in rule.get("conda_dependencies", []) or []:
+                    if dependency:
+                        software_labels.add(str(dependency))
+
+                wrapper_version = rule.get("wrapper_version")
+                if wrapper_version:
+                    software_labels.add(str(wrapper_version))
 
             for software in sorted(software_labels):
                 np.assertion.add(

@@ -650,7 +650,7 @@ class TestBuildNanopubExtraPaths:
     def test_build_nanopub_rule_software_labels_use_conda_env_and_wrapper_version(
         self, mock_nanopub_class, mock_load_profile
     ):
-        """Rule software labels only use conda_env and wrapper_version."""
+        """Rule software labels use parsed conda dependencies for non-wrapper rules."""
         mock_np = _make_mock_np(mock_nanopub_class, mock_load_profile)
 
         reporter = DummyReporter()
@@ -660,6 +660,7 @@ class TestBuildNanopubExtraPaths:
             "rules_full": [
                 {
                     "name": "align",
+                    "conda_dependencies": ["samtools =1.19.2", "htslib"],
                     "conda_env": "envs/align.yaml",
                     "wrapper_version": "v4.4.0",
                 }
@@ -675,7 +676,74 @@ class TestBuildNanopubExtraPaths:
             and len(call_args[0][0]) == 3
             and call_args[0][0][1] == NANOPUB_SNK.hasSoftwarePackage
         ]
-        assert sorted(software_literals) == ["envs/align.yaml", "v4.4.0"]
+        assert sorted(software_literals) == ["htslib", "samtools =1.19.2", "v4.4.0"]
+
+    @patch("snakemake_report_plugin_nanopub.load_profile")
+    @patch("snakemake_report_plugin_nanopub.Nanopub")
+    def test_build_nanopub_wrapper_rule_uses_full_wrapper_reference(
+        self, mock_nanopub_class, mock_load_profile
+    ):
+        mock_np = _make_mock_np(mock_nanopub_class, mock_load_profile)
+
+        reporter = DummyReporter()
+        payload = {
+            "workflow": {},
+            "jobs_full": [],
+            "rules_full": [
+                {
+                    "name": "minimap_index",
+                    "wrapper": "v7.6.0/bio/minimap2/index",
+                    "conda_dependencies": [],
+                    "conda_env": "github.com/snakemake/snakemake-wrappers/bio/minimap2/index/environment.yaml@v7.6.0",
+                    "wrapper_version": "v7.6.0",
+                }
+            ],
+        }
+
+        reporter.build_nanopub(payload)
+
+        software_literals = [
+            str(call_args[0][0][2])
+            for call_args in mock_np.assertion.add.call_args_list
+            if len(call_args[0]) == 1
+            and len(call_args[0][0]) == 3
+            and call_args[0][0][1] == NANOPUB_SNK.hasSoftwarePackage
+        ]
+        assert software_literals == [
+            "github.com/snakemake/snakemake-wrappers/bio/minimap2/index/environment.yaml@v7.6.0"
+        ]
+
+    @patch("snakemake_report_plugin_nanopub.load_profile")
+    @patch("snakemake_report_plugin_nanopub.Nanopub")
+    def test_build_nanopub_does_not_emit_raw_conda_env_path(
+        self, mock_nanopub_class, mock_load_profile
+    ):
+        mock_np = _make_mock_np(mock_nanopub_class, mock_load_profile)
+
+        reporter = DummyReporter()
+        payload = {
+            "workflow": {},
+            "jobs_full": [],
+            "rules_full": [
+                {
+                    "name": "align",
+                    "conda_dependencies": [],
+                    "conda_env": "../envs/reference.yml",
+                    "wrapper_version": None,
+                }
+            ],
+        }
+
+        reporter.build_nanopub(payload)
+
+        software_literals = [
+            str(call_args[0][0][2])
+            for call_args in mock_np.assertion.add.call_args_list
+            if len(call_args[0]) == 1
+            and len(call_args[0][0]) == 3
+            and call_args[0][0][1] == NANOPUB_SNK.hasSoftwarePackage
+        ]
+        assert software_literals == []
 
     @patch("snakemake_report_plugin_nanopub.load_profile")
     @patch("snakemake_report_plugin_nanopub.Nanopub")
