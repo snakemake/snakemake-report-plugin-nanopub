@@ -75,8 +75,8 @@ def extract_rules_full(rules, jsonable):
                 # "is_wrapper": rule.is_wrapper,
                 # "is_notebook": rule.is_notebook,
                 "name": rule.name,
-                "input": jsonable(list(rule.input)),
-                "output": jsonable(list(rule.output)),
+                "input": jsonable([item for item in rule.input if not callable(item)]),
+                "output": jsonable([item for item in rule.output if not callable(item)]),
                 "conda_env": jsonable(rule.conda_env),
                 "wrapper_version": wrapper_version,
             }
