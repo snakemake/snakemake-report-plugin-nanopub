@@ -218,7 +218,7 @@ def test_extract_rules_full_skips_conda_resolution_warning_for_wrapper_rule(json
         "github.com/snakemake/snakemake-wrappers/bio/qualimap/bamqc/"
         "environment.yaml@v4.4.0"
     )
-    assert result[0]["wrapper_version"] == "github.com"
+    assert result[0]["wrapper_version"] == "v4.4.0"
     assert result[0]["conda_dependencies"] == []
     assert logger.warnings == []
 
