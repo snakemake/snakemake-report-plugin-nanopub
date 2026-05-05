@@ -134,7 +134,7 @@ def read_workflow_config_files(configfiles, logger):
         entry = {"path": str(path)}
         try:
             entry["content"] = path.read_text(encoding="utf-8")
-        except OSError as e:
+        except (OSError, UnicodeError, yaml.YAMLError) as e:
             logger.warning(f"Could not read workflow config file {path}: {e}")
             entry["content"] = None
         config_entries.append(entry)
