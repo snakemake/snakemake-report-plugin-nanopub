@@ -340,8 +340,18 @@ class Reporter(ReporterBase):
             )
 
             software_labels = set()
-            wrapper_reference = rule.get("conda_env") or rule.get("wrapper")
-            if wrapper_reference and rule.get("wrapper"):
+            wrapper_reference = None
+            if rule.get("wrapper"):
+                conda_env = rule.get("conda_env")
+                if isinstance(conda_env, str) and (
+                    conda_env.startswith(("http://", "https://", "github.com/"))
+                    or "snakemake-wrappers" in conda_env
+                    or "@" in conda_env
+                ):
+                    wrapper_reference = conda_env
+                else:
+                    wrapper_reference = rule.get("wrapper")
+            if wrapper_reference:
                 software_labels.add(str(wrapper_reference))
             else:
                 for dependency in rule.get("conda_dependencies", []) or []:
