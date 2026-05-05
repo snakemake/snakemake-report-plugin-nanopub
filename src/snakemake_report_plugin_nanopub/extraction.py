@@ -170,8 +170,11 @@ def extract_rules_full(rules, jsonable, conda_env_search_roots=None, logger=None
         wrapper = getattr(rule, "wrapper", None)
         is_wrapper = bool(getattr(rule, "is_wrapper", False) or wrapper)
         wrapper_version = None
-        if wrapper and isinstance(wrapper, str) and "/" in wrapper:
-            wrapper_version = wrapper.split("/", 1)[0]
+        if isinstance(wrapper, str):
+            if "@" in wrapper:
+                wrapper_version = wrapper.rsplit("@", 1)[-1] or None
+            elif "/" in wrapper:
+                wrapper_version = wrapper.split("/", 1)[0]
 
         conda_env = jsonable(rule.conda_env)
         conda_dependencies = []
