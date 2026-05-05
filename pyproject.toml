@@ -10,7 +10,8 @@ requires-python = ">=3.12,<4.0"
 dependencies = [
     "snakemake-interface-common (>=1.17.4,<2.0.0)", 
     "snakemake-interface-report-plugins (>=1.1.0,<2.0.0)",
-    "nanopub (>=2.2.0)"
+  "nanopub (>=2.2.0)",
+  "PyYAML (>=6.0)"
 ]
 
 [project.scripts]

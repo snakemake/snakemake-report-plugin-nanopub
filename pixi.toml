@@ -16,6 +16,7 @@ nanopub = ">=2.2.0"
 snakemake = ">=8.0.0"
 snakemake-interface-common = ">=1.17.4,<2.0.0"
 snakemake-interface-report-plugins = ">=1.1.0,<2.0.0"
+pyyaml = ">=6.0"
 snakemake-report-plugin-nanopub = { path = ".", editable = true }
 
 [tasks]

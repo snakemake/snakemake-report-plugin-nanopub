@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -98,9 +99,128 @@ def test_extract_rules_full_extracts_wrapper_version(jsonable):
     rule = result[0]
     assert rule["name"] == "align"
     assert rule["wrapper"] == "0.99.0/bio/bwa/mem"
+    assert rule["conda_env"] == "envs/align.yaml"
+    assert rule["conda_dependencies"] == []
+    assert rule["input"][0] == "reads.fastq"
+    assert rule["output"] == ["aligned.bam"]
     assert rule["wrapper_version"] == "0.99.0"
-    assert rule["threads"] == 8
-    assert rule["is_wrapper"] is True
+    assert set(rule.keys()) == {
+        "name",
+        "input",
+        "output",
+        "wrapper",
+        "conda_env",
+        "conda_dependencies",
+        "wrapper_version",
+    }
+
+
+def test_extract_rules_full_parses_conda_dependencies_from_relative_env_path(
+    tmp_path, jsonable
+):
+    repo_root = tmp_path / "repo"
+    workflow_dir = repo_root / "workflow"
+    rules_dir = workflow_dir / "rules"
+    envs_dir = workflow_dir / "envs"
+    rules_dir.mkdir(parents=True)
+    envs_dir.mkdir(parents=True)
+
+    env_file = envs_dir / "base.yml"
+    env_file.write_text(
+        "channels:\n"
+        "  - conda-forge\n"
+        "dependencies:\n"
+        "  - bioconductor-deseq2 =1.46.0\n"
+        "  - r-stringr =1.5.1\n"
+        "  - r-pheatmap\n",
+        encoding="utf-8",
+    )
+
+    rule = DummyRule()
+    rule.wrapper = None
+    rule.is_wrapper = False
+    rule.conda_env = "../envs/base.yml"
+
+    result = extraction.extract_rules_full(
+        [rule],
+        jsonable,
+        conda_env_search_roots=[rules_dir],
+    )
+
+    assert result[0]["conda_dependencies"] == [
+        "bioconductor-deseq2 =1.46.0",
+        "r-stringr =1.5.1",
+        "r-pheatmap",
+    ]
+
+
+def test_extract_rules_full_logs_when_conda_env_path_cannot_be_resolved(jsonable):
+    logger = DummyLogger()
+    rule = DummyRule()
+    rule.wrapper = None
+    rule.is_wrapper = False
+    rule.conda_env = "../envs/does-not-exist.yml"
+
+    result = extraction.extract_rules_full(
+        [rule],
+        jsonable,
+        conda_env_search_roots=[Path("/tmp/nonexistent-root")],
+        logger=logger,
+    )
+
+    assert result[0]["conda_dependencies"] == []
+    assert any(
+        "Could not resolve conda environment path" in msg for msg in logger.warnings
+    )
+
+
+def test_extract_rules_full_ignores_callable_workdir_on_workflow(jsonable):
+    logger = DummyLogger()
+    rule = DummyRule()
+    rule.wrapper = None
+    rule.is_wrapper = False
+    rule.conda_env = "../envs/reference.yml"
+
+    class WorkflowWithMethod:
+        def workdir(self):
+            return "/tmp"
+
+    rule.workflow = WorkflowWithMethod()
+
+    result = extraction.extract_rules_full(
+        [rule],
+        jsonable,
+        conda_env_search_roots=[Path("/tmp/nonexistent-root")],
+        logger=logger,
+    )
+
+    assert result[0]["conda_dependencies"] == []
+
+
+def test_extract_rules_full_skips_conda_resolution_warning_for_wrapper_rule(jsonable):
+    logger = DummyLogger()
+    rule = DummyRule()
+    rule.wrapper = "github.com/snakemake/snakemake-wrappers/bio/qualimap/bamqc/environment.yaml@v4.4.0"
+    rule.is_wrapper = True
+    rule.conda_env = (
+        "github.com/snakemake/snakemake-wrappers/bio/qualimap/bamqc/"
+        "environment.yaml@v4.4.0"
+    )
+
+    result = extraction.extract_rules_full(
+        [rule],
+        jsonable,
+        conda_env_search_roots=[Path("/tmp/nonexistent-root")],
+        logger=logger,
+    )
+
+    assert result[0]["wrapper"] == (
+        "github.com/snakemake/snakemake-wrappers/bio/qualimap/bamqc/"
+        "environment.yaml@v4.4.0"
+    )
+    assert result[0]["wrapper_version"] == "v4.4.0"
+    assert result[0]["conda_dependencies"] == []
+    assert logger.warnings == []
 
 
 def test_extract_workflow_inputs_collects_declared_and_dag_inputs():
