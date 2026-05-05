@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.2.0](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.1.0...v0.2.0) (2026-05-05)
+
+
+### Features
+
+* added pyaml deps ([a40892c](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/a40892c5c855d26d39fcefb6736accee78f36afc))
+
+
+### Bug Fixes
+
+* catching additional ([559bea1](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/559bea1f7eeed3ae9b52e94f86ce117951a6214b))
+* formatting ([e054733](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/e0547333f2c4fdfa098f6c4c2295c09a47fd026a))
+* formatting & linting ([721bd9d](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/721bd9dc97530cb8dbda16c84017842e517cfe9b))
+* now conda env versions are present, so are wrapper versions ([d11ce70](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/d11ce70971848bb6fc24ee114bbd59454ebdb7a4))
+* rule info from job stats to rule metadata ([5302862](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/53028624f3a2013d5182a47dcda03f899cdc8978))
+* stable in- output extraction ([5362b47](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/5362b47f173d2e7c2627d42181b5baac5e7d6393))
+* test string ([3ffc08d](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/3ffc08d0c7135e1f65a9fe52ad41221ffc44fabd))
+* typos ([d7db6ab](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/d7db6ab4bab8d63d25ab790af03bdfadb801f0f3))
+* typos ([962a39a](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/962a39ac730f8bf9e49b50f6ad51e74e7cd379a0))
+* wrapper version, in- and output are stored, no job stats anymore - tests adapted ([d5dc802](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/d5dc80267bf84028e8d6dbfc81c22a45bff76671))
+
 ## 0.1.0 (2026-04-21)
 
 
