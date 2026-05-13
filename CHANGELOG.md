@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.2.0...v0.2.1) (2026-05-13)
+
+
+### Bug Fixes
+
+* dependabot ([31d3f9d](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/31d3f9dbde338debd1dcea5ed987249dadcdb4c1))
+
 ## [0.2.0](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.1.0...v0.2.0) (2026-05-05)
 
 
