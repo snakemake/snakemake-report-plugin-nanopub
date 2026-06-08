@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.2.0...v0.3.0) (2026-06-08)
+
+
+### Features
+
+* stable graphviz format ([4d74582](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/4d74582346d4584ad05d485613f6cd9c7b3a6d2f))
+
+
+### Bug Fixes
+
+* dependabot ([31d3f9d](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/31d3f9dbde338debd1dcea5ed987249dadcdb4c1))
+* removed unused import ([e2c51da](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/e2c51da08efa0451cb918fad57188e45837f31b0))
+
+
+### Documentation
+
+* updated readme and added test ([83bae80](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/83bae8027562190fff39ee010dfb26ceca1227d9))
+
 ## [0.2.0](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.1.0...v0.2.0) (2026-05-05)
 
 
