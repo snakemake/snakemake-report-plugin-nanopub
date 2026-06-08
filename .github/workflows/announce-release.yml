@@ -43,7 +43,7 @@ jobs:
             Give us some time, and you will automatically find the plugin on #Bioconda and #Pypi.
             
             This plugin is relevant for Snakemake users willing to publish 
-            Software Metadata easyly.
+            Software Metadata using #nanopubs easyly.
             The maintainer is here on Mastodon @rupdecat.
             
             If you discover any issues, please report them on {{ issue_url }}.
