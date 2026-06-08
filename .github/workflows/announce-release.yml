@@ -34,7 +34,7 @@ jobs:
           pr-title: ${{ github.event.head_commit.message }}
           image: "logo_dark.png"
           image-description: "Snakemake Logo"
-          repotitle: "Snakemake Reporter PLugin for Nanopubs"
+          repotitle: "Snakemake Reporter Plugin for Nanopubs"
           message: |
             Beep, Beep - I am your friendly #Snakemake release announcement bot.
             
