@@ -29,6 +29,14 @@ from snakemake_report_plugin_nanopub_graph import (  # noqa: F401  (re-exported 
 )
 
 
+def _graphviz_output_format(graph_format: str) -> str:
+    # Use the Cairo SVG backend so text is outlined as paths and does not
+    # depend on external fonts when typeset in downstream tools.
+    if graph_format.lower() == "svg":
+        return "svg:cairo"
+    return graph_format
+
+
 def render_graph(dot: str, output_path: Path, graph_format: str) -> None:
     dot_bin = shutil.which("dot")
     if dot_bin is None:
@@ -43,10 +51,11 @@ def render_graph(dot: str, output_path: Path, graph_format: str) -> None:
         tmp_dot_path = Path(tmp_dot.name)
 
     try:
+        graphviz_format = _graphviz_output_format(graph_format)
         subprocess.run(
             [
                 dot_bin,
-                f"-T{graph_format}",
+                f"-T{graphviz_format}",
                 str(tmp_dot_path),
                 "-o",
                 str(output_path),
