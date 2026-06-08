@@ -1,4 +1,3 @@
-from pathlib import Path
 from unittest.mock import patch
 
 import snakemake_report_plugin_nanopub_cli as cli_main
