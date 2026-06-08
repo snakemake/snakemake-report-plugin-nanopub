@@ -30,4 +30,9 @@ Optional settings:
 - `--verbose` to print debug logs for nanopub description extraction
 - `--text-width 60` to control line wrapping width in box text
 
+When the output format resolves to `svg` (via `--format svg` or an `.svg` output
+filename), Graphviz is invoked with `svg:cairo` so text is embedded as vector
+outlines. This avoids downstream font substitution/reflow issues during JOSS
+LuaLaTeX typesetting.
+
 Default output format is `png`.
