@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.1](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.3.0...v0.3.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* added nanopub hashtag to the announcement message ([70916c3](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/70916c38aeb420b9264aabe584438d912a00ca68))
+* added nanopub hashtag to the announcement message ([c7125ae](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/c7125aea0dbc9af418244da863a9cdee1111ce57))
+* PLugin -&gt; Plugin ([cfade62](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/cfade62d427dfc0fc614037f700635b2366d8555))
+* PLugin -&gt; Plugin ([42a75a3](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/42a75a36ac6eebef509f7cf45ebbeb5a419c3a4a))
+* pytest version minimal 9.0.3 ([b033f9b](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/b033f9b2db6d9ca3e895e3e1955801ff9065162c))
+* pytest version minimal 9.0.3, due security issue - pytest through 9.0.2 on UNIX relies on directories with the '/tmp/pytest-of-{user}' name pattern, which allows local users to cause a denial of service or possibly gain privileges. ([171000e](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/171000e1dd35b544102b3a586adba374f455a1cb))
+
 ## [0.3.0](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.2.0...v0.3.0) (2026-06-08)
 
 
