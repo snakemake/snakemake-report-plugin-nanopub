@@ -41,7 +41,7 @@ dev = { features = ["dev"] }
 publish = { features = ["publish"] }
 
 [tool.pixi.feature.dev.dependencies]
-pytest = ">=8.3.5,<9"
+pytest = ">=9.03,<=10"
 ruff = ">=0.10.0,<0.11"
 pytest-cov = ">=6.0.0,<7"
 
@@ -103,7 +103,7 @@ plot-nanopub-knowledge-graph = "snakemake_report_plugin_nanopub_cli:main"
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.11.3"
 coverage = "^7.8.0"
-pytest = "^8.3.5"
+pytest = ">9.0.3"
 snakemake = ">9.11.6"
 nanopub = "^2.0.1"
 rdflib = "^7.1.0"
