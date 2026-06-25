@@ -41,7 +41,7 @@ dev = { features = ["dev"] }
 publish = { features = ["publish"] }
 
 [tool.pixi.feature.dev.dependencies]
-pytest = ">=9.03,<=10"
+pytest = ">=9.0.3,<=10"
 ruff = ">=0.10.0,<0.11"
 pytest-cov = ">=6.0.0,<7"
 
