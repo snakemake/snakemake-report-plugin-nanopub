@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.2](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.3.1...v0.3.2) (2026-07-01)
+
+
+### Bug Fixes
+
+* corrected version bump for pytest - was typo ([0668d47](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/0668d4747449a535e0bb63245578f204a2bd790c))
+* corrected version bump for pytest - was typo ([94c70a7](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/94c70a7ab39b3b18febeb5a3a5d531cf3f6c69fb))
+
 ## [0.3.1](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.3.0...v0.3.1) (2026-06-12)
 
 
