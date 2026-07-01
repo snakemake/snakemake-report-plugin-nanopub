@@ -1705,14 +1705,14 @@ files = [
 
 [[package]]
 name = "snakemake"
-version = "9.21.1"
+version = "9.23.1"
 description = "Workflow management system to create reproducible and scalable data analyses"
 optional = false
 python-versions = ">=3.11"
 groups = ["dev"]
 files = [
-    {file = "snakemake-9.21.1-py3-none-any.whl", hash = "sha256:9ff83764256dea9bad5dc072a3e71ce111154999b50c127aaddffff5eef50f26"},
-    {file = "snakemake-9.21.1.tar.gz", hash = "sha256:495cd9438fd530b8f1d207112decd71ab2ac3699194b1756960f9488f98c26e7"},
+    {file = "snakemake-9.23.1-py3-none-any.whl", hash = "sha256:9fdbfff25f1b442cdf7906ca06b465fc24b9bf72e2d51514fb93d83e3f8aeb35"},
+    {file = "snakemake-9.23.1.tar.gz", hash = "sha256:ef8d698bfce66a6669cc29df7e344b0b367fd90956c725e5ae0a79a556e8e93f"},
 ]
 
 [package.dependencies]
