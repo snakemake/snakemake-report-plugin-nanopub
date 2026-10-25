@@ -773,7 +773,7 @@ packages:
   name: snakemake-report-plugin-nanopub
   requires_dist:
   - snakemake-interface-common>=1.23.0,<2
-  - snakemake-interface-report-plugins>=1.1.0,<2
+  - snakemake-interface-report-plugins>=1.1.0,<3
   - nanopub>=2.2.0
   - pyyaml>=6.0.3,<7
   requires_python: '>=3.11,<4'
