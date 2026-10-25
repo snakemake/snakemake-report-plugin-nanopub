@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.0](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.3.2...v0.4.0) (2026-10-25)
+
+
+### Features
+
+* migreated the replease to pixi ([40e1ea6](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/40e1ea6fc0603b3a015a90aff32ce7965aa9db1f))
+
+
+### Bug Fixes
+
+* ci still contained conda lines ([66bd1e7](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/66bd1e7edb083f3d45ac6f84f328aecaa86cf425))
+* concluding merge ([a50f1e9](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/a50f1e9e76a957b2fc7dc113ccb164e762da6120))
+* drop poetry/pixi.toml, consolidate into pyproject.toml ([f7a32ad](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/f7a32adc465ee2aa7af43579e906d66b3ad06864))
+* pixi migration ready ([7b95d4f](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/7b95d4faa5dbbe82a5aec6d22a7892d1c675010f))
+* trying next run with caching ([1ed703b](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/1ed703ba7bfa6ec6fd2bb30772ca8e2c61c856c6))
+* typo easyly -&gt; easily ([3d39f87](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/3d39f8704249fdc5649b6c16e1916221795c7fab))
+
 ## [0.3.2](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.3.1...v0.3.2) (2026-08-22)
 
 
