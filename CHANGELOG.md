@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.5.0](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.4.0...v0.5.0) (2026-10-30)
+
+
+### Features
+
+* a proifle error will be raised, if 'np setup' has not been performed ([e041809](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/e04180968475aa93a479d4a36a760cc0e12e54dc))
+* profile checking ([5710bd7](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/5710bd7693083e77ff9f9db69d2781316e3c58af))
+
+
+### Bug Fixes
+
+* added two doc strings ([679bc63](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/679bc633eb8f3c71a26df65949853253fa03a337))
+* added two more docstrings ([7cfcd05](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/7cfcd05b24abfa47747ea19e06126780b5625fc3))
+* clearer comment ([c7d946f](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/c7d946f5b4db34acf14b76811c55445d51cd2e4c))
+* corrected import ([4cc6dab](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/4cc6dabb814c288b086b518c84ae2dd54b15ef3d))
+* excluding the changelog from codespell checks ([bd2b2d6](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/bd2b2d6c43760bbf9051575cc34c37703c0e04a7))
+* linting ([4d92c6f](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/4d92c6fb34a47ce4d617d0eef69bb5e6acce1b23))
+* linting (leftover unused imports and undefined constant ([2ec4d5d](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/2ec4d5d3af634141c2d0908885d11a14df15db32))
+* typos and grammar in comment string ([3e43e7d](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/3e43e7daf646f864bec3d71a2badd957a2361aed))
+
 ## [0.4.0](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.3.2...v0.4.0) (2026-10-25)
 
 
