@@ -9,7 +9,8 @@ import uuid
 import sys
 from urllib.parse import quote, urlparse
 
-from nanopub import Nanopub, NanopubConf, load_profile, ProfileError
+from nanopub import Nanopub, NanopubConf, load_profile
+from nanopub.profile import ProfileError
 from rdflib import Literal, Namespace, RDF, URIRef
 from rdflib.namespace import DCTERMS, RDFS
 from rdflib.namespace import XSD
