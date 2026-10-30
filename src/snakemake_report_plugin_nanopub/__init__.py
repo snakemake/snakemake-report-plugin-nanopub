@@ -123,6 +123,9 @@ class Reporter(ReporterBase):
         )
 
     def safe_fragment(self, value: Any, prefix: str = "item") -> str:
+        """
+        helper function to create a safe URI fragment from a value, using a prefix and a UUID if necessary
+        """
         raw = str(value) if value is not None else ""
         raw = raw.strip()
         if not raw:
@@ -135,6 +138,9 @@ class Reporter(ReporterBase):
         drop_links: bool = False,
         strip_comment_lines: bool = False,
     ) -> Optional[str]:
+        """
+        Convert a value to plain text, optionally dropping links and stripping comment lines.
+        """
         if value is None:
             return None
 
