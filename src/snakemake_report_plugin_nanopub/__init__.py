@@ -10,6 +10,7 @@ import sys
 from urllib.parse import quote, urlparse
 
 from nanopub import Nanopub, NanopubConf, load_profile
+from nanopub.profile import ProfileError
 from rdflib import Literal, Namespace, RDF, URIRef
 from rdflib.namespace import DCTERMS, RDFS
 from rdflib.namespace import XSD
@@ -216,7 +217,14 @@ class Reporter(ReporterBase):
         return text
 
     def build_nanopub(self, payload: dict):
-        profile = load_profile()
+        try:
+            profile = load_profile()
+        except ProfileError as e:
+            raise WorkflowError(
+                "Failed to load nanopub profile. Ensure that the nanopub library is "
+                "properly configured with a valid profile.",
+                e,
+            )
         np_conf = NanopubConf(
             use_test_server=not self.settings.main_server,
             profile=profile,
