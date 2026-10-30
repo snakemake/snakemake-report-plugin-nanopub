@@ -76,7 +76,7 @@ class ReportSettings(ReportSettingsBase):
 class Reporter(ReporterBase):
     # We set a publishing threshold to avoid attempting to publish nanopubs
     # that are too large for the server to handle.
-    # Here, 'quad' means RDF quads, which are the internal representation used by the
+    # Here, 'quad' means RDF quadruples, which are the internal representation used by the
     # nanopub library. The final published nanopub will be serialized to RDF triples,
     # but the library may use quads (subject, predicate, object, assertion_graph).
     # 586 quads triggered HTTP 400 on the registry; we keep the threshold at 500 and
