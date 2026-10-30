@@ -10,22 +10,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-from snakemake_report_plugin_nanopub_graph import (  # noqa: F401  (re-exported for tests)
-    LOGGER_NAME,
-    NP_DISPLAY_PREFIXES,
-    PREDICATES,
-    _artifact_code_from_nanopub_id,
-    _clean_whitespace,
-    _context_is_assertion,
-    _description_from_url,
-    _node_label,
-    _parse_nanopub_graph,
-    _resolve_line_color,
-    _shorten,
-    _strip_display_prefix,
-    _wrap_for_html,
+from snakemake_report_plugin_nanopub_graph import (
     build_dot,
-    deduce_description,
 )
 
 
@@ -133,7 +119,7 @@ def parse_args() -> argparse.Namespace:
 def _setup_logger(verbose: bool) -> logging.Logger:
     level = logging.DEBUG if verbose else logging.WARNING
     logging.basicConfig(level=level, format="%(levelname)s: %(message)s")
-    return logging.getLogger(LOGGER_NAME)
+    return logging.getLogger("snakemake_report_plugin_nanopub_cli")
 
 
 def main() -> None:

@@ -76,11 +76,11 @@ class ReportSettings(ReportSettingsBase):
 class Reporter(ReporterBase):
     # We set a publishing threshold to avoid attempting to publish nanopubs
     # that are too large for the server to handle.
-    # Here, 'quat' means RDF quads, which are the internal representation used by the
+    # Here, 'quad' means RDF quadruples, which are the internal representation used by the
     # nanopub library. The final published nanopub will be serialized to RDF triples,
     # but the library may use quads (subject, predicate, object, assertion_graph).
-    # 586 quads triggered HTTP 400 on the registry; keep the threshold at 500 and
-    # compact by dropping lower-priority job detail before rule metadata.
+    # 586 quads triggered HTTP 400 on the registry; we keep the threshold at 500 and
+    # compact by dropping lower-priority job detail before a rule's metadata.
     _MAX_PUBLISH_QUADS = 500
 
     def __post_init__(self):
@@ -89,6 +89,9 @@ class Reporter(ReporterBase):
         self.logger = snakemake_logger
 
     def _jsonable(self, value: Any):
+        """
+        helper function to convert a value to a JSON-serializable representation
+        """
         if isinstance(value, dict):
             return {str(k): self._jsonable(v) for k, v in value.items()}
         if isinstance(value, (list, tuple, set)):
@@ -100,6 +103,9 @@ class Reporter(ReporterBase):
         return str(value)
 
     def make_term(self, value: Any):
+        """
+        Convert a value to an RDF term (URIRef or Literal) for use in the nanopub.
+        """
         if value is None:
             return None
         if isinstance(value, bool):
@@ -117,6 +123,9 @@ class Reporter(ReporterBase):
         )
 
     def safe_fragment(self, value: Any, prefix: str = "item") -> str:
+        """
+        helper function to create a safe URI fragment from a value, using a prefix and a UUID if necessary
+        """
         raw = str(value) if value is not None else ""
         raw = raw.strip()
         if not raw:
@@ -129,6 +138,9 @@ class Reporter(ReporterBase):
         drop_links: bool = False,
         strip_comment_lines: bool = False,
     ) -> Optional[str]:
+        """
+        Convert a value to plain text, optionally dropping links and stripping comment lines.
+        """
         if value is None:
             return None
 
