@@ -89,6 +89,9 @@ class Reporter(ReporterBase):
         self.logger = snakemake_logger
 
     def _jsonable(self, value: Any):
+        """
+        helper function to convert a value to a JSON-serializable representation
+        """
         if isinstance(value, dict):
             return {str(k): self._jsonable(v) for k, v in value.items()}
         if isinstance(value, (list, tuple, set)):
@@ -100,6 +103,9 @@ class Reporter(ReporterBase):
         return str(value)
 
     def make_term(self, value: Any):
+        """
+        Convert a value to an RDF term (URIRef or Literal) for use in the nanopub.
+        """
         if value is None:
             return None
         if isinstance(value, bool):
