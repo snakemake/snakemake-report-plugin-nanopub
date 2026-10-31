@@ -1,6 +1,6 @@
 [project]
 name = "snakemake-report-plugin-nanopub"
-version = "0.5.0"
+version = "0.5.1"
 description = "Reporter plugin for Snakemake using nanopub-py to create workflow metadata nanopubs"
 readme = "README.md"
 requires-python = ">=3.11,<4"
