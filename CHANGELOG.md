@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.5.0...v0.5.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* Pin hatchling core metadata to 2.4 so `twine check` passes in publish job ([8cfc796](https://github.com/snakemake/snakemake-report-plugin-nanopub/commit/8cfc796690f8adaf5d1fd1e33beedcb863bac59f))
+
 ## [0.5.0](https://github.com/snakemake/snakemake-report-plugin-nanopub/compare/v0.4.0...v0.5.0) (2026-10-30)
 
 
